@@ -20,4 +20,4 @@ O resgate do cashback sem o web view: resgatar o cashback para a carteira de cas
 
 Abrir: https://snksergio.github.io/pagar-fatura-igreen/cashback-carteira.html
 
-Três propostas para mostrar que o cashback vira dinheiro, cada uma com link próprio: balão no Resgatar (`#ajuda-a`), alerta no cartão (`#ajuda-b`) e três passos na primeira visita (`#ajuda-c`).
+A ajuda que mostra que o cashback vira dinheiro: um balão no botão Resgatar, que leva aos três passos e, fechado, vira a linha "Como transformar em dinheiro?" (`#ajuda`).
