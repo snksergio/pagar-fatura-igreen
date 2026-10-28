@@ -7,3 +7,9 @@ Abrir: https://snksergio.github.io/pagar-fatura-igreen/
 - Esquerda: os fluxos. Meio: o celular e os botões de simular (fatura atrasada, Pix recebido, compensação do boleto...). Direita: as telas do fluxo escolhido.
 - Cada fluxo tem link próprio, por exemplo `#boleto`, `#cb-pix`, `#seguro`.
 - Tecla H esconde as colunas e os botões para gravar a tela.
+
+## Faturas de energia · padrão do app (Figma V1)
+
+Faturas de energia redesenhadas no padrão do app em produção: ver as faturas, pagar no Pix e no boleto, parcelar, agrupar num boleto único, boleto em emissão, consulta fora do ar, Pix expirado e troca de unidade.
+
+Abrir: https://snksergio.github.io/pagar-fatura-igreen/faturas-energia.html
