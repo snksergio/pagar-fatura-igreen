@@ -19,3 +19,5 @@ Abrir: https://snksergio.github.io/pagar-fatura-igreen/faturas-energia.html
 O resgate do cashback sem o web view: resgatar o cashback para a carteira de cashback, ver o saldo e o que vence, resgatar via Pix com a chave reconhecida sozinha, chave não encontrada, primeiro resgate sem chave, comprovante, extrato e dúvidas. No padrão do App V1 e da página Pay.
 
 Abrir: https://snksergio.github.io/pagar-fatura-igreen/cashback-carteira.html
+
+Três propostas para mostrar que o cashback vira dinheiro, cada uma com link próprio: balão no Resgatar (`#ajuda-a`), alerta no cartão (`#ajuda-b`) e três passos na primeira visita (`#ajuda-c`).
