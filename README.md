@@ -21,3 +21,12 @@ O resgate do cashback sem o web view: resgatar o cashback para a carteira de cas
 Abrir: https://snksergio.github.io/pagar-fatura-igreen/cashback-carteira.html
 
 A ajuda que mostra que o cashback vira dinheiro: um balão no botão Resgatar, que leva aos três passos e, fechado, vira a linha "Como transformar em dinheiro?" (`#ajuda`).
+
+## Negociar faturas · parcelar, agrupar e desmembrar
+
+As faturas em aberto da Casa no padrão do app: parcelar (entrada e até 12x), agrupar num boleto único e desmembrar o boleto agrupado, que volta a ter um boleto por fatura enquanto não for pago. Traz também os ajustes do Calebe: sem cashback nos cards e no detalhe, a vencida no Pix da energia sem multa e juros, o valor cheio riscado para quem tem economia com desconto e sem o bloco "Consumo de energia".
+
+Abrir: https://snksergio.github.io/pagar-fatura-igreen/faturas-negociar.html
+
+- Embaixo do celular, escolha o cliente: economia com desconto ou normal, com ou sem desconto adicional.
+- Links diretos: `#parcelar`, `#parcelar-regras`, `#agrupar`, `#desmembrar`, `#desmembrar-pago`.
