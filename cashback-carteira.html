@@ -223,6 +223,7 @@ button.cb-acum { width: 100%; text-align: left; }
 /* Cashback 04: amount card, value chips, keypad */
 .valor-grupo { display: flex; flex-direction: column; gap: 18px; }
 .valor-card { background: #FFFFFF; border: 1px solid #EAECEE; border-radius: 20px; box-shadow: var(--sombra); padding: 20px 0 24px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.chip-verde > svg:first-child { margin-left: -2px; }
 .chip-verde { height: 32px; padding: 0 12px; border-radius: 100px; background: var(--verde); color: #FFFFFF; display: inline-flex; align-items: center; gap: 6px; font-size: 14px; line-height: 20px; font-weight: 500; white-space: nowrap; }
 .valor-bloco { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; padding: 0 16px; }
 .valor-num { font-size: 32px; line-height: 38px; font-weight: 700; color: var(--tinta-8); white-space: nowrap; }
@@ -427,7 +428,7 @@ button.cb-acum { width: 100%; text-align: left; }
 /* where to rescue from: the amount leads each row */
 .origem { min-height: 76px; }
 .origem:disabled { opacity: 0.5; }
-.origem-v { flex-shrink: 0; font-size: 18px; line-height: 24px; font-weight: 700; color: var(--tinta); white-space: nowrap; }
+.origem-v { flex-shrink: 0; font-size: 16px; line-height: 20px; font-weight: 700; color: var(--tinta); white-space: nowrap; }
 /* the press */
 .bt, .tecla, .chip, .pilula-bt, .pill-acao, .ib, .bt-36, .auto, .pay-lin, .opc { transition: transform 0.12s ease, background-color 0.12s ease; }
 .bt:active:not(:disabled), .pilula-bt:active, .pill-acao:active, .chip:active, .ib:active, .bt-36:active { transform: scale(0.97); }
@@ -790,7 +791,7 @@ const FOLHAS = {
       return `<div class="folha-rolo"><div class="fl-topo">
         <div class="fl-cab"><h2 class="fl-t">Resgatar Cashback</h2><p class="fl-d">O valor vai para a sua carteira de cashback. De lá, você resgata via Pix para a sua conta.</p></div>
         <div class="valor-grupo">
-          <div class="valor-card"><button class="chip-verde" data-f="produto" aria-label="Trocar o produto do resgate">${PROD[d.prod].nome}: ${brl(saldo)}${ic('baixo', 18, 2.6)}</button>
+          <div class="valor-card"><button class="chip-verde" data-f="produto" aria-label="Trocar o produto do resgate">${ic(PROD[d.prod].ic, 16)}${PROD[d.prod].nome}: ${brl(saldo)}${ic('baixo', 18, 2.6)}</button>
             <div class="valor-bloco"><p class="valor-num" data-num></p><p class="valor-dica" data-dica></p></div></div>
           <div class="chips-valor" role="group" aria-label="Valores sugeridos">${quartos.map(c => `<button class="chip" data-f="chip" data-c="${c}">${brl(c / 100)}</button>`).join('')}</div>
         </div>
