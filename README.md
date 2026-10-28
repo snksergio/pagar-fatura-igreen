@@ -13,3 +13,9 @@ Abrir: https://snksergio.github.io/pagar-fatura-igreen/
 Faturas de energia redesenhadas no padrão do app em produção: ver as faturas, pagar no Pix e no boleto, parcelar, agrupar num boleto único, boleto em emissão, consulta fora do ar, Pix expirado e troca de unidade.
 
 Abrir: https://snksergio.github.io/pagar-fatura-igreen/faturas-energia.html
+
+## Cashback, carteira de cashback e resgate via Pix
+
+O resgate do cashback sem o web view: resgatar o cashback para a carteira de cashback, ver o saldo e o que vence, resgatar via Pix com a chave reconhecida sozinha, chave não encontrada, primeiro resgate sem chave, comprovante, extrato e dúvidas. No padrão do App V1 e da página Pay.
+
+Abrir: https://snksergio.github.io/pagar-fatura-igreen/cashback-carteira.html
