@@ -417,6 +417,17 @@ button.cb-acum { width: 100%; text-align: left; }
 .vista.chega .comp-sec:nth-child(1) { animation: surge 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s both; }
 .vista.chega .comp-sec:nth-child(2) { animation: surge 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) 0.45s both; }
 .vista.chega .comp-pe { animation: surge 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) 0.55s both; }
+/* a number that changed rolls to its new value; a new row arrives highlighted */
+[data-val] { display: inline-block; transition: color 0.3s ease; }
+[data-val].mudando { color: var(--verde); }
+@keyframes realce { from { background-color: rgba(51,132,73,0.14); } to { background-color: rgba(51,132,73,0); } }
+@keyframes realceCard { from { box-shadow: 0 0 0 2px rgba(51,132,73,0.45); } to { box-shadow: 0 1px 2px rgba(0,66,110,0.10); } }
+.lin.aparece { animation: surge 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both, realce 1.8s ease-out 0.2s both; }
+.card.aparece { animation: surge 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both, realceCard 1.8s ease-out 0.2s both; }
+/* where to rescue from: the amount leads each row */
+.origem { min-height: 76px; }
+.origem:disabled { opacity: 0.5; }
+.origem-v { flex-shrink: 0; font-size: 18px; line-height: 24px; font-weight: 700; color: var(--tinta); white-space: nowrap; }
 /* the press */
 .bt, .tecla, .chip, .pilula-bt, .pill-acao, .ib, .bt-36, .auto, .pay-lin, .opc { transition: transform 0.12s ease, background-color 0.12s ease; }
 .bt:active:not(:disabled), .pilula-bt:active, .pill-acao:active, .chip:active, .ib:active, .bt-36:active { transform: scale(0.97); }
@@ -495,6 +506,36 @@ function contar(el, ate, ms = 700) {
   const passo = t => { const k = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - k, 3); el.textContent = brl(red(ate * e)); if (k < 1) requestAnimationFrame(passo); };
   requestAnimationFrame(passo);
 }
+// each number shows what the customer last saw; when its screen is on top again with no sheet over it, it rolls
+const VISTO = {};
+const numero = (k, v) => `<span data-val="${k}" data-n="${v}">${brl(VISTO[k] ?? v)}</span>`;
+function semearVisto() {
+  for (const k of Object.keys(VISTO)) delete VISTO[k];
+  const t = red(E.cb.green + E.cb.telecom);
+  Object.assign(VISTO, { 'home-total': t, 'home-green': E.cb.green, 'home-telecom': E.cb.telecom, carteira: E.carteira, 'ponte-total': t });
+}
+function rolar(el, de, para, ms = 900) {
+  if (semMovimento()) { el.textContent = brl(para); return; }
+  const t0 = performance.now();
+  el.classList.add('mudando');
+  el.animate([{ transform: 'scale(1.06)' }, { transform: 'none' }], { duration: 320, easing: 'ease-out' });
+  const passo = t => { const k = Math.min(1, (t - t0) / ms), e = 1 - Math.pow(1 - k, 3); el.textContent = brl(red(de + (para - de) * e)); if (k < 1) requestAnimationFrame(passo); else setTimeout(() => el.classList.remove('mudando'), 500); };
+  requestAnimationFrame(passo);
+}
+function atualizarNumeros() {
+  if (camadas.length || !pilha.length) return;
+  const v = topoPilha();
+  v.el.querySelectorAll('[data-val]').forEach(el => {
+    const k = el.dataset.val, para = +el.dataset.n, de = VISTO[k];
+    VISTO[k] = para;
+    if (de != null && Math.abs(de - para) > 0.004) rolar(el, de, para);
+  });
+  const novos = v.el.querySelectorAll('[data-novo]');
+  if (!semMovimento()) novos.forEach(el => el.classList.add('aparece'));
+  novos.forEach(el => el.removeAttribute('data-novo'));
+  if (v.id === 'cashback') E.hist.forEach(h => delete h.novo);
+  if (v.id === 'carteira' || v.id === 'extrato') E.mov.forEach(m => delete m.novo);
+}
 const pulsar = el => { if (el && !semMovimento()) el.animate([{ transform: 'scale(1.05)' }, { transform: 'none' }], { duration: 160, easing: 'ease-out' }); };
 const TITULAR = 'Leandro Freire';
 const CPF_NUM = '41827563982';
@@ -569,13 +610,13 @@ const topo = (titulo, ajuda, claro) => `<header class="topo${claro ? ' claro' : 
 const valorSinal = v => `<span class="v"><span class="${v < 0 ? 'menos' : 'mais'}">${v < 0 ? '-' : '+'} </span>${brl(Math.abs(v))}</span>`;
 function linhaHist(h) {
   const ganho = h.tipo === 'ganho';
-  return `<div class="card r14"><div class="lin"><span class="bolha ${ganho ? 'verde' : ''}">${ic(PROD[h.prod].ic, 18)}${ganho ? SVG.seloEntrada : SVG.seloSaida}</span><span class="txt"><span class="lin-t">${h.t}</span><span class="lin-s">${h.d.replace(/ - (\d\d:\d\d)$/, '<span class="hora">&nbsp;- $1</span>')}${h.ref ? `<span class="sep"></span>${h.ref}` : ''}</span></span><span class="lin-v">${valorSinal(h.v)}${h.base ? `<span class="b">${brl(h.base)}</span>` : ''}</span></div></div>`;
+  return `<div class="card r14"${h.novo ? ' data-novo' : ''}><div class="lin"><span class="bolha ${ganho ? 'verde' : ''}">${ic(PROD[h.prod].ic, 18)}${ganho ? SVG.seloEntrada : SVG.seloSaida}</span><span class="txt"><span class="lin-t">${h.t}</span><span class="lin-s">${h.d.replace(/ - (\d\d:\d\d)$/, '<span class="hora">&nbsp;- $1</span>')}${h.ref ? `<span class="sep"></span>${h.ref}` : ''}</span></span><span class="lin-v">${valorSinal(h.v)}${h.base ? `<span class="b">${brl(h.base)}</span>` : ''}</span></div></div>`;
 }
 function linhaMov(m) {
   const pos = m.v > 0;
   const icone = m.tipo === 'pix' ? SVG.pix(18, 1.6) : m.tipo === 'vencido' ? ic('ampulheta', 18) : ic('moedas', 18);
   const sub = m.tipo === 'pix' ? (m.st === 'ok' ? `<span class="pt"></span>Concluído<span class="sep"></span>${m.d.split(' · ')[0]}` : '<span class="pt lar"></span>Em processamento') : `${m.s}<span class="sep"></span>${m.d}`;
-  return `<div class="lin"><span class="bolha ${pos ? 'verde' : ''}">${icone}</span><span class="txt"><span class="lin-t">${m.t}</span><span class="lin-s">${sub}</span></span><span class="vpill ${pos ? 'pos' : ''}">${pos ? '+' : '-'} ${brl(Math.abs(m.v))}</span></div>`;
+  return `<div class="lin"${m.novo ? ' data-novo' : ''}><span class="bolha ${pos ? 'verde' : ''}">${icone}</span><span class="txt"><span class="lin-t">${m.t}</span><span class="lin-s">${sub}</span></span><span class="vpill ${pos ? 'pos' : ''}">${pos ? '+' : '-'} ${brl(Math.abs(m.v))}</span></div>`;
 }
 const linhaChave = () => E.chave
   ? `<div class="card r14"><div class="lin"><span class="bolha verde">${ic(ICONE_CHAVE[E.chave.tipo], 18)}</span><span class="txt"><span class="lin-t">${chaveMasc(E.chave)}</span><span class="lin-s">${chaveNome(E.chave)}<span class="sep"></span>no seu nome</span></span><button class="pill-acao" data-v="alterarChave">Alterar</button></div></div>`
@@ -591,14 +632,14 @@ const VISTAS = {
     titulo: 'Cashback', ajuda: true,
     html() {
       const total = totalCb();
-      const prod = k => `<span class="prod ${E.cb[k] > 0 ? '' : 'zero'}"><span class="nome">${ic(PROD[k].ic, 18)}${PROD[k].nome}:</span><span class="val">${brl(E.cb[k])}</span></span>`;
+      const prod = k => `<span class="prod ${E.cb[k] > 0 ? '' : 'zero'}"><span class="nome">${ic(PROD[k].ic, 18)}${PROD[k].nome}:</span><span class="val">${numero('home-' + k, E.cb[k])}</span></span>`;
       const f = E.filtroHist;
       const hist = E.hist.filter(h => f === 'todas' || h.prod === f);
       return `<div class="miolo">
         <div class="grupo">
           <div class="card r14">
             <div class="cb-topo">
-              <div class="cb-linha"><div><p class="cb-rot">Total disponível para resgate</p><p class="cb-valor">${brl(total)}</p></div><button class="link cb-resgatar" data-folha="resgatar" ${total > 0 ? '' : 'disabled'}><span>Resgatar</span>${ic('direita', 16)}</button></div>
+              <div class="cb-linha"><div><p class="cb-rot">Total disponível para resgate</p><p class="cb-valor">${numero('home-total', total)}</p></div><button class="link cb-resgatar" data-v="resgatar" ${total > 0 ? '' : 'disabled'}><span>Resgatar</span>${ic('direita', 16)}</button></div>
               <div class="cb-acum">${SVG.acumulado}<span class="cb-acum-t">Total Acumulado</span><span class="cb-acum-v">${brl(E.acumulado)}</span></div>
             </div>
             <div class="prods">${prod('green')}<span class="div" aria-hidden="true"></span>${prod('telecom')}</div>
@@ -624,7 +665,6 @@ const VISTAS = {
   },
   carteira: {
     titulo: 'Carteira de cashback', ajuda: true,
-    chegou: v => { if (!E.oculto) contar(v.el.querySelector('.saldo-num'), E.carteira, 600); },
     html() {
       const total = totalCb(), oc = E.oculto;
       const venc = [...E.vencer].sort((a, b) => a.dias - b.dias)[0];
@@ -638,14 +678,14 @@ const VISTAS = {
               <img class="cart-arte" src="${IMG.moedaRaio}" width="84" height="84" alt="">
               <div class="cart-topo">
                 <p class="cb-rot">Disponível para resgate via Pix</p>
-                <p class="saldo-v"><span class="saldo-num">${oc ? 'R$ ••••••' : brl(E.carteira)}</span><button class="olho" data-v="olho" aria-label="${oc ? 'Mostrar' : 'Esconder'} o saldo">${ic(oc ? 'olhoFechado' : 'olho', 20)}</button></p>
+                <p class="saldo-v"><span class="saldo-num">${oc ? 'R$ ••••••' : numero('carteira', E.carteira)}</span><button class="olho" data-v="olho" aria-label="${oc ? 'Mostrar' : 'Esconder'} o saldo">${ic(oc ? 'olhoFechado' : 'olho', 20)}</button></p>
                 <p class="saldo-s"><b>${oc ? '•••' : fmt(E.carteira)} pontos</b> · 1 ponto = R$ 1,00</p>
               </div>
               ${prazo}
             </div>
             <div class="cb-pe"><button class="bt bt-42 bt-verde" data-v="pix" ${E.carteira >= 1 ? '' : 'disabled'}>${SVG.pix(18, 1.8)}<span>Resgatar via Pix</span></button></div>
           </div>
-          ${total > 0 ? `<button class="card r14 auto" data-folha="resgatar"><span class="auto-txt"><span class="auto-t">${brl(total)} ainda no cashback</span><span class="auto-s">Traga para a carteira para resgatar via Pix</span></span>${ic('direita', 16)}</button>` : ''}
+          ${total > 0 ? `<button class="card r14 auto" data-v="resgatar"><span class="auto-txt"><span class="auto-t">${numero('ponte-total', total)} ainda no cashback</span><span class="auto-s">Traga para a carteira para resgatar via Pix</span></span>${ic('direita', 16)}</button>` : ''}
         </div>
         <section class="secao"><h2 class="secao-t">Sua chave Pix</h2>${linhaChave()}</section>
         <section class="secao"><div class="secao-cab"><h2 class="secao-t">Últimas movimentações</h2><button class="link" data-ir="extrato">Ver tudo${ic('direita', 18)}</button></div>
@@ -716,10 +756,17 @@ const ACOES_VISTA = {
   filtroExt: b => { E.filtroExt = b.dataset.k; redesenhar(); },
   copiar: () => aviso('Link de indicação copiado'),
   pix: () => iniciarPix(),
+  resgatar: () => iniciarResgate(),
   alterarChave: () => abrirFolha('chave', {}),
   olho: () => { E.oculto = !E.oculto; redesenhar(); },
   okSucesso: () => voltar(),
 };
+function iniciarResgate() {
+  const com = Object.keys(PROD).filter(k => E.cb[k] > 0);
+  if (!com.length) return aviso('Não há cashback para resgatar agora');
+  if (com.length === 1) return abrirFolha('resgatar', { prod: com[0] });
+  abrirFolha('origem');
+}
 function iniciarPix() {
   if (!E.chave) return abrirFolha('chave', { motivo: 'primeira', depois: 'pix' });
   if (E.carteira < 1) return aviso('O resgate via Pix começa em R$ 1,00');
@@ -770,13 +817,21 @@ const FOLHAS = {
           E.cb[d.prod] = red(E.cb[d.prod] - v);
           E.carteira = red(E.carteira + v);
           E.vencer.push({ valor: v, data: '28/10/2027', dias: 365 });
-          E.hist.unshift({ prod: d.prod, tipo: 'resgate', t: 'Cashback resgatado', d: '28/10/2026 - 18:08', v: -v });
-          E.mov.unshift({ tipo: 'entrada', t: 'Cashback recebido', s: PROD[d.prod].nome, d: 'Hoje · 18:08', mes: 'Outubro de 2026', v });
+          E.hist.unshift({ prod: d.prod, tipo: 'resgate', t: 'Cashback resgatado', d: '28/10/2026 - 18:08', v: -v, novo: true });
+          E.mov.unshift({ tipo: 'entrada', t: 'Cashback recebido', s: PROD[d.prod].nome, d: 'Hoje · 18:08', mes: 'Outubro de 2026', v, novo: true });
           fecharFolha(); redesenhar();
           setTimeout(() => abrirFolha('resgatado', { v, prod: d.prod }), 260);
         });
       },
     },
+  },
+  origem: {
+    rotulo: 'De onde resgatar',
+    html: () => `<div class="folha-rolo fl-fim"><div class="fl-topo">
+      <div class="fl-cab"><h2 class="fl-t">De onde você quer resgatar?</h2><p class="fl-d">Cada produto guarda o próprio cashback. O valor vai para a sua carteira de cashback.</p></div>
+      <div class="card r14">${Object.keys(PROD).map(k => `<button class="pay-lin origem" data-f="ir" data-k="${k}" ${E.cb[k] > 0 ? '' : 'disabled'}><span class="bolha verde">${ic(PROD[k].ic, 18)}</span><span class="txt"><span class="pay-valor">${PROD[k].nome}</span><span class="pay-sub">${E.cb[k] > 0 ? 'Disponível' : 'Sem saldo'}</span></span><span class="origem-v">${brl(E.cb[k])}</span>${ic('direita', 16)}</button>`).join('')}</div>
+    </div></div>`,
+    acoes: { ir: (c, b) => { const prod = b.dataset.k; fecharFolha(); setTimeout(() => abrirFolha('resgatar', { prod }), 220); } },
   },
   produto: {
     rotulo: 'Escolher o produto',
@@ -791,10 +846,10 @@ const FOLHAS = {
     html: d => `<button class="fechar" data-fechar aria-label="Fechar">${ic('fechar', 16)}</button><div class="folha-rolo fl-fim"><div class="fl-topo">
       <img class="fl-arte" src="${IMG.porquinho}" width="120" height="120" alt="">
       <div class="fl-cab" style="gap: 4px"><p class="mod-valor">${brl(d.v)}</p><h2 class="mod-t">Agora na sua carteira de cashback</h2><p class="fl-d" style="margin-top: 4px">O valor saiu do cashback de ${PROD[d.prod].nome}. Quando quiser, resgate via Pix para a sua conta.</p></div>
-      <button class="bt bt-56 bt-verde" data-fechar><span>Ok, entendi</span></button>
+      <div style="display: flex; flex-direction: column; gap: 12px">${pilha.length && topoPilha().id === 'carteira' ? '<button class="bt bt-56 bt-verde" data-fechar><span>Ok, entendi</span></button>' : '<button class="bt bt-56 bt-verde" data-f="carteira"><span>Acessar carteira de cashback</span></button><button class="bt bt-56 bt-contorno" data-fechar><span>Ok, entendi</span></button>'}</div>
     </div></div>`,
     ligar: c => contar(c.el.querySelector('.mod-valor'), c.dados.v),
-    acoes: {},
+    acoes: { carteira: () => { fecharFolha(); setTimeout(() => abrir('carteira'), 200); } },
   },
   pix: {
     rotulo: 'Resgate via Pix',
@@ -828,7 +883,7 @@ const FOLHAS = {
           E.vencer = E.vencer.filter(x => x.valor > 0);
           const usada = E.chaves.find(x => x.tipo === E.chave.tipo && x.valor === E.chave.valor);
           if (usada) usada.uso = 'usada hoje';
-          E.mov.unshift({ tipo: 'pix', t: 'Resgate via Pix', st: 'proc', d: 'Hoje · 18:09', mes: 'Outubro de 2026', v: -v });
+          E.mov.unshift({ tipo: 'pix', t: 'Resgate via Pix', st: 'proc', d: 'Hoje · 18:09', mes: 'Outubro de 2026', v: -v, novo: true });
           fecharTodas(); redesenhar();
           abrir('sucesso', { v, fica: E.carteira, chave: { ...E.chave } });
         }, 1300);
@@ -963,6 +1018,7 @@ function desenharVista(v) {
   const rolo = v.el.querySelector('.rolo'), y = rolo ? rolo.scrollTop : 0;
   v.el.innerHTML = (v.def.semTopo ? '' : topo(v.def.titulo, v.def.ajuda, v.def.claro)) + `<div class="rolo">${v.def.html(v.dados)}</div>`;
   v.el.querySelector('.rolo').scrollTop = y;
+  v.el.querySelectorAll('[data-val]').forEach(el => { if (VISTO[el.dataset.val] == null) VISTO[el.dataset.val] = +el.dataset.n; });
 }
 function abrir(id, dados = {}, anim = true) {
   const el = document.createElement('section');
@@ -975,6 +1031,7 @@ function abrir(id, dados = {}, anim = true) {
   $vistas.appendChild(el);
   pilha.push(v);
   $tela.classList.toggle('status-claro', false);
+  setTimeout(atualizarNumeros, anim && pilha.length > 1 ? 380 : 0);
 }
 function voltar() {
   if (camadas.length) return fecharFolha();
@@ -983,6 +1040,7 @@ function voltar() {
   v.el.classList.add('sai');
   setTimeout(() => v.el.remove(), 300);
   redesenhar();
+  setTimeout(atualizarNumeros, 320);
 }
 const redesenhar = () => pilha.forEach(desenharVista);
 function desenharFolha(c) {
@@ -1009,6 +1067,7 @@ function fecharFolha() {
   if (!c) return;
   c.el.classList.add('saindo');
   setTimeout(() => c.el.remove(), 240);
+  if (!camadas.length) setTimeout(atualizarNumeros, 260);
 }
 const fecharTodas = () => { while (camadas.length) fecharFolha(); };
 function carregar(b, fn, ms = 900) { b.classList.add('carregando'); setTimeout(() => { b.classList.remove('carregando'); fn(); }, ms); }
@@ -1044,7 +1103,7 @@ document.addEventListener('keydown', e => {
 
 // ---------- flows of the presentation ----------
 const FLUXOS = [
-  { id: 'resgatar', nome: 'Resgatar cashback', desc: 'Do cashback para a carteira de cashback, com teclado e valores sugeridos', ir: () => { abrir('cashback', {}, false); setTimeout(() => abrirFolha('resgatar'), 300); } },
+  { id: 'resgatar', nome: 'Resgatar cashback', desc: 'Do cashback para a carteira de cashback, com teclado e valores sugeridos', ir: () => { abrir('cashback', {}, false); setTimeout(() => iniciarResgate(), 300); } },
   { id: 'carteira', nome: 'Carteira de cashback', desc: 'O saldo para resgate, o que vence, a chave e as movimentações', ir: () => { abrir('cashback', {}, false); abrir('carteira', {}, false); } },
   { id: 'pix', nome: 'Resgate via Pix', desc: 'Valor, destino, confirmação e resgate solicitado', ir: () => { abrir('cashback', {}, false); abrir('carteira', {}, false); setTimeout(() => iniciarPix(), 300); } },
   { id: 'pix-erro', nome: 'Resgate com chave não encontrada', desc: 'O banco não acha a chave; cadastrar outra e concluir', ir: () => { E.chaveOk = false; abrir('cashback', {}, false); abrir('carteira', {}, false); setTimeout(() => abrirFolha('pix', { reais: 155, passo: 'confirmar' }), 300); } },
@@ -1056,6 +1115,7 @@ const FLUXOS = [
 function iniciarFluxo(id) {
   const f = FLUXOS.find(x => x.id === id) || FLUXOS[0];
   E = INICIAL();
+  semearVisto();
   camadas.splice(0).forEach(c => c.el.remove());
   pilha.splice(0).forEach(v => v.el.remove());
   document.getElementById('aviso').innerHTML = '';
@@ -1065,10 +1125,12 @@ function iniciarFluxo(id) {
 }
 document.getElementById('fluxos').innerHTML = FLUXOS.map((f, i) => `<button class="rt-f" data-fluxo="${f.id}"><span class="rt-n">${i + 1}</span><span><span class="rt-fn">${f.nome}</span><span class="rt-fd">${f.desc}</span></span></button>`).join('');
 document.getElementById('fluxos').addEventListener('click', e => { const b = e.target.closest('[data-fluxo]'); if (b) iniciarFluxo(b.dataset.fluxo); });
+semearVisto();
 if (FLUXOS.some(f => '#' + f.id === location.hash)) iniciarFluxo(location.hash.slice(1)); else abrir('cashback', {}, false);
 const caber = () => { const ap = document.querySelector('.aparelho'), z = Math.min(1, (innerHeight - 64) / 868); ap.style.zoom = innerWidth > 560 && z < 1 ? String(z) : ''; };
 addEventListener('resize', caber); caber();
-addEventListener('hashchange', () => { if (FLUXOS.some(f => '#' + f.id === location.hash)) iniciarFluxo(location.hash.slice(1)); });
+addEventListener('hashchange', () => { semearVisto();
+if (FLUXOS.some(f => '#' + f.id === location.hash)) iniciarFluxo(location.hash.slice(1)); });
 </script>
 </body>
 </html>
