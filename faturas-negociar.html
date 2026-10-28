@@ -898,6 +898,10 @@ ${jaPagou}
 <div style="height: 32px"></div>`;
 }
 
+// the boleto's code with its own copy button beside the label, so copying does not hang only on the footer (Sergio, 28/10)
+const COPIAR_COD = `<button data-copiar-codigo style="height: 28px; margin: -4px 0; padding: 0 10px; border: 0; border-radius: 14px; background: #EBF3ED; color: #338449; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 18px; font-weight: 600">${svg(P.copiar, 14, 2.2)}Copiar</button>`;
+const copiarNoBoleto = h => h.replace('<span style="display: block; margin-top: 10px; font-size: 12px; line-height: 18px; color: #6A6E71">Código de barras</span>', `<div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px"><span style="font-size: 12px; line-height: 18px; color: #6A6E71">Código de barras</span>${COPIAR_COD}</div>`);
+
 // ---------- paying: the app's boards with each bill's values and words
 function pagamento(nome, est, id) {
   const x = ctx(est, id), cb = x.cb > 0, A = b => K.adaptar(K.boardPg(b, cb), x, cb), c = contasDe(est)[id];
@@ -907,7 +911,7 @@ function pagamento(nome, est, id) {
       return tela(K.usando(R.telaPagarConta({ id, def: DEF[id], pag: PAG[id], disp: est.semCb ? 0 : numeros(est).disp, usarCb: !est.semCb && !!(est.pg && est.pg.conta === id && est.pg.usarCb), metodo: (est.pg && est.pg.conta === id && est.pg.metodo) || 'pix', carteira: x.carteira })));
     case 'Pix': return rolavel(troca(A('PgPix'), K.PIX_ESPERA, `Aguardando o pagamento. Quando o Pix cair, a fatura é quitada.`));
     case 'PixExpirado': return rolavel(K.adaptar(board('PgPixExpiradoV2'), { ...x, cb: 0 }, false));
-    case 'Boleto': return rolavel(K.cbNoBoleto(A('PgBoletoV3'), x.pagueAte.slice(0, 5), x.g));
+    case 'Boleto': return rolavel(copiarNoBoleto(A('PgBoletoV3')));
     case 'F:BoletoPagar': return troca(soFolha(K.cbNoBoleto(A('PgBoletoPagar'), x.pagueAte.slice(0, 5), x.g)), `Quando o banco confirmar o pagamento de ${dinheiro(x.v)}, a fatura é quitada aqui.`, `Quando o banco confirmar o pagamento de ${dinheiro(x.v)}, a fatura é quitada e o cashback de ${dinheiro(x.g)} cai na sua conta.`);
     case 'Aguardando': return trocas(A('PgBoletoAguardando'), [['Avisamos quando a fatura for quitada.', 'Avisamos quando a fatura for quitada e o cashback cair.'], ['>Fatura quitada<', '>Fatura quitada e cashback na conta<']]);
     case 'F:Senha': return soFolha(A('PgSaldoSenha'));
@@ -1011,10 +1015,19 @@ function fgFatura(est, id) {
     : [['Data de vencimento', '11/10/2026'], ['Energia verde compensada', `${d.kwh} kWh`], ['Quanto pagaria sem iGreen', brl(d.conta)], ['Desconto iGreen (15%)', '-' + brl(d.desc), { verde: true }], ['Total a pagar com desconto', brl(d.valor), { forte: true }]];
   const pilula = `Desconto iGreen: ${brl(d.desc)}`;
   const extra = set ? fgInline({ texto: `No Pix da energia, você paga <span style="font-weight: 700">${brl(PIX_SET())}</span>: sem multa e juros`, icone: P.pix }) : '';
-  const valorForma = (v, verde) => `<span style="flex-shrink: 0; font-size: 14px; line-height: 20px; font-weight: 600; color: ${verde ? '#338449' : '#6A6E71'}; font-variant-numeric: tabular-nums; white-space: nowrap">${brl(v)}</span>`;
-  const formaPix = set ? { ic: P.pix, titulo: 'Pix', verde: 'Sem multa e juros', fim: valorForma(PIX_SET(), true), attrs: ' data-forma="pix"' } : { ic: P.pix, titulo: 'Pix', attrs: ' data-forma="pix"' };
-  const formaBoleto = set ? { ic: FG_BARRAS, titulo: 'Boleto', sub: 'Com multa e juros', fim: valorForma(d.valor), attrs: ' data-forma="boleto"' } : { ic: FG_BARRAS, titulo: 'Boleto', attrs: ' data-forma="boleto"' };
-  const metodos = K.listaDS([formaPix, formaBoleto, { ic: FG_BARRAS, titulo: 'Copiar código de barras', attrs: ' data-forma="codigo"' }]);
+  // how to pay as Calebe's recorte 4 (28/10): pick one in "Como pagar" or "Ou no cartão de crédito" and the button pays it.
+  // On the overdue bill the Pix carries the "Sem multa e juros" seal and its own price, the boleto's struck beside it
+  const pg = est.pg || {}, metodo = (pg.conta === id && pg.metodo) || 'pix', vPix = set ? PIX_SET() : d.valor;
+  const opcao = (k, ic, titulo, sub, i) => { const on = k === metodo; return `<button role="radio" aria-checked="${on}" data-metodo="${k}" style="width: 100%; min-height: 76px; box-sizing: border-box; border: 0;${i ? ' border-top: 1px solid #EFF1F2;' : ''} background: transparent; color: #0D0F0F; padding: 16px 0; display: flex; align-items: center; gap: 16px; text-align: left">${ic.startsWith('<span') ? ic : U.circulo(svg(ic, 19, 2), on ? { bg: '#EBF3ED', cor: K.VERDE_TXT, s: 44 } : { bg: '#EFF1F2', cor: '#3D4246', s: 44 })}<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">${titulo}<span style="font-size: 12px; line-height: 18px; font-weight: 500; color: #6A6E71; font-variant-numeric: tabular-nums">${sub}</span></span>${radio3(on)}</button>`; };
+  const nomeOp = (t, selo = '') => `<span style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px"><span style="font-size: 14px; line-height: 20px; font-weight: 600">${t}</span>${selo}</span>`;
+  const SELO_PIX = '<span style="height: 20px; padding: 0 8px; border-radius: 10px; background: #338449; color: #FFFFFF; font-size: 11px; line-height: 20px; font-weight: 600; white-space: nowrap">Sem multa e juros</span>';
+  const VISA3 = '<span style="width: 44px; height: 30px; flex-shrink: 0; border-radius: 7px; background: #1A3D8F; color: #FFFFFF; font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: 0.06em; display: flex; align-items: center; justify-content: center">VISA</span>';
+  const comoPagar = opcao('pix', P.pix, nomeOp('Pix', set ? SELO_PIX : ''), set ? `<span style="text-decoration: line-through">${brl(d.valor)}</span> <span style="font-weight: 600; color: #338449">${brl(vPix)}</span> · na hora` : 'Na hora · sem taxa', 0)
+    + opcao('boleto', FG_BARRAS, nomeOp('Boleto'), set ? `${brl(d.valor)} com multa e juros` : 'Compensa em até 2 dias úteis', 1);
+  const cartoes = opcao('visa', VISA3, nomeOp('Cartão de crédito'), 'Visa •••• 1290 · à vista', 0)
+    + `<button style="width: 100%; min-height: 76px; box-sizing: border-box; border: 0; border-top: 1px solid #EFF1F2; background: transparent; color: #0D0F0F; padding: 16px 0; display: flex; align-items: center; gap: 16px; text-align: left">${U.circulo(svg('<path d="M5 12h14"></path><path d="M12 5v14"></path>', 19, 2.2), { bg: '#EFF1F2', cor: '#3D4246', s: 44 })}<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; line-height: 20px; font-weight: 600">Adicionar cartão</span><span style="font-size: 12px; line-height: 18px; font-weight: 500; color: #6A6E71">De crédito, outro banco</span></span>${svg(P.direita, 18, 2.2).replace('stroke="currentColor"', 'stroke="#8B9094"')}</button>`;
+  const grupoPg = (rot, c) => `<div style="margin: 0 16px"><div style="border-radius: 14px; background: #FFFFFF; border: 1px solid #EFF1F2; box-shadow: 0 1px 2px rgba(0,66,110,0.10); overflow: hidden"><div role="radiogroup" aria-label="${rot}" style="padding: 0 16px">${c}</div></div></div>`;
+  const botao = metodo === 'visa' ? `Pagar ${brl(d.valor)} no cartão` : metodo === 'boleto' ? `Pagar ${brl(d.valor)} com boleto` : `Pagar ${brl(vPix)} com Pix`;
   const mais = K.listaDS([
     { ic: P.baixar, titulo: set ? 'Baixar 2ª via atualizada' : 'Baixar PDF da fatura', sub: set ? 'PDF com o boleto atualizado' : 'A conta de luz completa', attrs: ' data-forma="pdf"' },
     ...(set ? [{ ic: FG_RECIBO, titulo: 'Já paguei esta fatura', sub: 'Envie o comprovante', attrs: ' data-forma="japaguei"' }] : [{ ic: FG_CAL, titulo: 'Mudar o dia de vencimento', sub: 'Hoje vence todo dia 11' }]),
@@ -1024,12 +1037,16 @@ function fgFatura(est, id) {
 ${topo}
 ${fgSecao('Detalhamento da fatura')}
 ${fgTicket({ pilula, titulo: 'Sua fatura veio mais barata!', linhas, extra })}
-${fgSecao('Escolha o método de pagamento')}
-${metodos}
+${fgSecao('Como pagar')}
+${grupoPg('Como pagar', comoPagar)}
+${fgSecao('Ou no cartão de crédito')}
+${grupoPg('Ou no cartão de crédito', cartoes)}
 ${fgSecao('Mais opções')}
 ${mais}
-<div style="height: 32px"></div>`;
+<div style="height: 24px"></div>
+${AJ.rodapeFixo(AJ.btnPrimario(botao))}`;
 }
+
 // a paid bill: "tudo certo" in the alert, the same ticket with what was paid, the options, the receipt in the footer
 function fgPaga({ mes, pagaEm, forma, linhas, desconto, cbTexto, cbTom = 'verde' }) {
   return `${AJ.cabecalho(`Fatura de ${mes}`, 'Energia · Casa')}
@@ -5191,14 +5208,15 @@ CONT_PRONTO.then(({ CONT, M }) => {
   function ligarPagar(c, id) {
     c.querySelectorAll('button[aria-label$="Ver detalhes"]').forEach(b => { b._acao = () => ir('FaturaDetalhe:' + id); });
     c.querySelectorAll('[role=switch]').forEach(s => { s._acao = () => { estado.pg.usarCb = !estado.pg.usarCb; ir('Pagar:' + id, 'swap', { manter: true }); }; });
-    c.querySelectorAll('[data-metodo]').forEach(b => { b._acao = () => { estado.pg.metodo = b.dataset.metodo; ir('Pagar:' + id, 'swap', { manter: true }); }; });
+    c.querySelectorAll('[data-metodo]').forEach(b => { b._acao = () => { estado.pg = { ...estado.pg, conta: id, metodo: b.dataset.metodo }; ir(base(), 'swap', { manter: true }); }; });
     em(c, 'Adicionar cartão', () => toast('O cadastro de cartão fica fora deste protótipo'), { comeca: true });
     const seguir = () => {
-      const k = estado.pg.metodo;
+      const k = estado.pg.conta === id ? estado.pg.metodo : 'pix';
+      estado.pg = { ...estado.pg, conta: id, metodo: k };
       if (k === 'pix') ir('Pix:' + id);
       else if (k === 'boleto') ir('Boleto:' + id);
       else if (k === 'saldo') folha((aPagar(id) > N().carteira ? 'SaldoInsuficiente:' : 'Senha:') + id);
-      else toast('No cartão, a conta de luz não rende cashback. Neste protótipo, siga com Pix ou boleto.');
+      else toast('O pagamento no cartão fica fora deste protótipo. Siga com Pix ou boleto.');
     };
     em(c, 'Pagar R$', seguir, { comeca: true });
     c.querySelectorAll('[data-forma]').forEach(b => { b._acao = () => {
@@ -5240,6 +5258,7 @@ CONT_PRONTO.then(({ CONT, M }) => {
     em(c, 'Pagar boleto', () => folha('BoletoPagar:' + id), { exato: true });
     c.querySelectorAll('[data-abre]').forEach(b => { b._acao = () => { const p = c.querySelector('[data-painel="' + b.dataset.abre + '"]'); if (!p) return; const abrir = p.hidden; p.hidden = !abrir; b.setAttribute('aria-expanded', String(abrir)); const sv = b.querySelector('svg'); if (sv) sv.style.transform = abrir ? 'rotate(180deg)' : ''; if (b.firstChild) b.firstChild.textContent = abrir ? 'Menos informações' : 'Mais informações'; ajustarAltura(atual); }; });
     em(c, 'Copiar código de barras', () => toast('Código de barras copiado'), { exato: true });
+    c.querySelectorAll('[data-copiar-codigo]').forEach(b => { b._acao = () => toast('Código de barras copiado'); });
     em(c, 'Baixar boleto em PDF', () => toast('PDF do boleto baixado'), { comeca: true });
     em(c, 'Compartilhar boleto', () => toast('Pronto para compartilhar'), { comeca: true });
     const d = c.querySelector('.folha [role=dialog]');
@@ -5325,7 +5344,6 @@ CONT_PRONTO.then(({ CONT, M }) => {
     else if (nome === 'Carregando') c.querySelectorAll('[data-trocar-uc]').forEach(x => area(x, () => folha('Instalacoes')));
     else if (nome === 'FaturaDetalhe') {
       ligarPagar(c, arg);
-      em(c, 'Pagar', () => { const ant = pilha[pilha.length - 1]; if (ant && ant.id === 'Pagar:' + arg) voltar(); else irPagar(arg); }, { comeca: true });
       em(c, 'Copiar código de barras', () => toast('Código de barras copiado'), { comeca: true });
       em(c, 'Já paguei esta fatura', () => folha('JaPaguei:' + arg), { comeca: true });
       em(c, 'Baixar', () => toast('PDF salvo no celular'), { comeca: true });
