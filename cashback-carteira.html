@@ -433,8 +433,6 @@ button.cb-acum { width: 100%; text-align: left; }
 .bt-mini { height: 32px; padding: 0 10px 0 14px; flex-shrink: 0; border-radius: 100px; background: var(--verde); color: #FFFFFF; display: inline-flex; align-items: center; gap: 4px; font-size: 14px; line-height: 18px; font-weight: 600; }
 .bt-mini:disabled { opacity: 0.4; }
 .balao { position: relative; margin-top: -6px; background: var(--acento); border: 1px solid #B4CFBE; border-radius: 12px; padding: 12px 6px 12px 12px; display: flex; align-items: flex-start; gap: 10px; }
-.balao.entra-anim { animation: balao-entra 0.45s cubic-bezier(0.34, 1.3, 0.64, 1) both; transform-origin: 85% 0; }
-@keyframes balao-entra { from { opacity: 0; transform: translateY(-6px) scale(0.94); } }
 .balao-seta { position: absolute; top: -7px; right: 46px; width: 12px; height: 12px; background: var(--acento); border-top: 1px solid #B4CFBE; border-left: 1px solid #B4CFBE; border-radius: 2px 0 0 0; transform: rotate(45deg); }
 .balao-ic { width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%; background: var(--verde); color: #FFFFFF; display: grid; place-items: center; }
 .balao-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
@@ -445,7 +443,6 @@ button.cb-acum { width: 100%; text-align: left; }
 .balao-x { width: 32px; height: 32px; flex-shrink: 0; margin-top: -6px; border-radius: 50%; display: grid; place-items: center; color: var(--mudo); }
 .info-linha { margin-top: -10px; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--verde); position: relative; }
 .info-linha::after { content: ''; position: absolute; inset: -12px -8px; }
-.info-linha.pulsa { animation: surge 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 /* the steps */
 /* C: two buttons at the foot, and the steps */
 .passos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; text-align: left; }
@@ -670,11 +667,11 @@ function alertaVencer(x) {
 
 // the top of the cashback card: the label, the amount and the "Resgatar" button; below them, the balloon while it is
 // open, or the line that brings it back
+const htmlBalao = () => `<div class="balao" data-ajuda role="status"><span class="balao-seta" aria-hidden="true"></span><span class="balao-ic">${ic('nota', 16)}</span><span class="balao-txt"><span class="balao-t">Seu cashback vira dinheiro</span><span class="balao-c">Resgate para a carteira de cashback e, de lá, mande por Pix para a sua conta.</span><button class="balao-link" data-v="comoFunciona">Como funciona</button></span><button class="balao-x" data-v="ajudaFechar" aria-label="Fechar a dica">${ic('fechar', 16, 2.4)}</button></div>`;
+const htmlLinha = () => `<button class="info-linha" data-v="ajudaAbrir">${ic('info', 14)}Como transformar em dinheiro?</button>`;
 function topoAjuda(total) {
   const botao = `<button class="bt-mini" data-v="resgatar" ${total > 0 ? '' : 'disabled'}><span>Resgatar</span>${ic('direita', 14, 2.4)}</button>`;
-  let ajuda = '';
-  if (E.ajudaAberta) ajuda = `<div class="balao${consumir('balao') ? ' entra-anim' : ''}" data-ajuda role="status"><span class="balao-seta" aria-hidden="true"></span><span class="balao-ic">${ic('nota', 16)}</span><span class="balao-txt"><span class="balao-t">Seu cashback vira dinheiro</span><span class="balao-c">Resgate para a carteira de cashback e, de lá, mande por Pix para a sua conta.</span><button class="balao-link" data-v="comoFunciona">Como funciona</button></span><button class="balao-x" data-v="ajudaFechar" aria-label="Fechar a dica">${ic('fechar', 16, 2.4)}</button></div>`;
-  else if (E.ajudaFechada) ajuda = `<button class="info-linha${consumir('icone') ? ' pulsa' : ''}" data-v="ajudaAbrir">${ic('info', 14)}Como transformar em dinheiro?</button>`;
+  const ajuda = E.ajudaAberta ? htmlBalao() : E.ajudaFechada ? htmlLinha() : '';
   return `<div class="cb-linha"><div><p class="cb-rot">Total disponível para resgate</p><p class="cb-valor">${numero('home-total', total)}</p></div>${botao}</div>${ajuda}`;
 }
 // the balloon opens the first time the cashback home is on top with nothing over it, and leaves by itself
@@ -683,24 +680,55 @@ function chegouAjuda() {
   E.ajudaAgendada = true;
   setTimeout(() => { E.ajudaAgendada = false; if (!E.ajudaFechada && !E.ajudaAberta && !camadas.length && pilha.length && topoPilha().id === 'cashback') abrirAjuda(); }, 700);
 }
-function abrirAjuda() {
-  E.ajudaAberta = true; E.anima.balao = true; redesenhar();
-  clearTimeout(ajudaT); ajudaT = setTimeout(fecharAjuda, 9000);
-}
-function fecharAjuda() {
-  clearTimeout(ajudaT);
+// the help changes in place, without redrawing the screen: a redraw replays the screen's arrival and blinks
+function trocarAjuda(html) {
   const v = pilha.find(x => x.id === 'cashback');
-  const alvo = v && v.el.querySelector('[data-ajuda]');
-  const fim = () => { E.ajudaAberta = false; E.ajudaFechada = true; E.anima.icone = true; redesenhar(); };
+  const topo = v && v.el.querySelector('.cb-topo');
+  if (!topo) { redesenhar(); return null; }
+  const t = document.createElement('div'); t.innerHTML = html;
+  const novo = t.firstElementChild, velho = topo.querySelector('[data-ajuda], .info-linha');
+  if (velho) velho.replaceWith(novo); else topo.querySelector('.cb-linha').after(novo);
+  return novo;
+}
+const ABRE = 'cubic-bezier(0.2, 0.8, 0.2, 1)', FECHA = 'cubic-bezier(0.4, 0, 0.2, 1)';
+// from nothing to its height: the card grows with it, then the content rises and the arrow points at the button
+function crescer(el) {
+  const cs = getComputedStyle(el), alvo = [el.offsetHeight + 'px', cs.marginTop, cs.paddingTop, cs.paddingBottom];
+  el.style.overflow = 'hidden';
+  el.animate([{ height: '0px', marginTop: '-18px', paddingTop: '0px', paddingBottom: '0px', opacity: 0 },
+    { height: alvo[0], marginTop: alvo[1], paddingTop: alvo[2], paddingBottom: alvo[3], opacity: 1 }], { duration: 380, easing: ABRE }).onfinish = () => { el.style.overflow = ''; };
+  el.querySelectorAll('.balao-ic, .balao-txt, .balao-x').forEach((c, i) => c.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 280, delay: 140 + i * 40, easing: 'ease-out', fill: 'backwards' }));
+  const seta = el.querySelector('.balao-seta');
+  if (seta) seta.animate([{ opacity: 0, transform: 'translateY(5px) rotate(45deg)' }, { opacity: 1, transform: 'rotate(45deg)' }], { duration: 220, delay: 340, easing: 'ease-out', fill: 'backwards' });
+}
+function encolher(el, fim) {
+  const cs = getComputedStyle(el);
+  el.style.overflow = 'hidden';
   let feito = false;
-  const fimUma = () => { if (!feito) { feito = true; fim(); } };
-  if (!alvo || semMovimento()) return fim();
-  alvo.style.overflow = 'hidden';
-  const cs = getComputedStyle(alvo);
-  alvo.animate([{ opacity: 1, height: alvo.offsetHeight + 'px', marginTop: cs.marginTop, paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom },
-    { opacity: 0, height: '0px', marginTop: '-18px', paddingTop: '0px', paddingBottom: '0px' }], { duration: 280, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' }).onfinish = () => fimUma();
-  // a page in the background may never finish the animation: the state changes anyway
-  setTimeout(() => fimUma(), 450);
+  const uma = () => { if (!feito) { feito = true; fim(); } };
+  el.animate([{ height: el.offsetHeight + 'px', marginTop: cs.marginTop, paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, opacity: 1 },
+    { height: '0px', marginTop: '-18px', paddingTop: '0px', paddingBottom: '0px', opacity: 0 }], { duration: 300, easing: FECHA, fill: 'forwards' }).onfinish = uma;
+  // a page in the background may never finish the animation: the swap happens anyway
+  setTimeout(uma, 480);
+}
+function abrirAjuda() {
+  E.ajudaAberta = true;
+  const el = trocarAjuda(htmlBalao());
+  if (el && !semMovimento()) crescer(el);
+  clearTimeout(ajudaT); ajudaT = setTimeout(() => fecharAjuda(), 9000);
+}
+function fecharAjuda(semAnim) {
+  clearTimeout(ajudaT);
+  if (!E.ajudaAberta) return;
+  E.ajudaAberta = false; E.ajudaFechada = true;
+  const v = pilha.find(x => x.id === 'cashback');
+  const el = v && v.el.querySelector('[data-ajuda]');
+  const fim = () => {
+    const linha = trocarAjuda(htmlLinha());
+    if (linha && !semAnim && !semMovimento()) linha.animate([{ opacity: 0, transform: 'translateY(-4px)' }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'ease-out' });
+  };
+  if (!el || semAnim || semMovimento()) return fim();
+  encolher(el, fim);
 }
 
 // ---------- screens ----------
@@ -837,7 +865,7 @@ const ACOES_VISTA = {
   resgatar: () => iniciarResgate(),
   ajudaFechar: () => fecharAjuda(),
   ajudaAbrir: () => abrirAjuda(),
-  comoFunciona: () => { if (E.ajudaAberta) { clearTimeout(ajudaT); E.ajudaAberta = false; E.ajudaFechada = true; redesenhar(); } abrirFolha('comoFunciona', {}); },
+  comoFunciona: () => { fecharAjuda(true); abrirFolha('comoFunciona', {}); },
   alterarChave: () => abrirFolha('chave', {}),
   olho: () => { E.oculto = !E.oculto; redesenhar(); },
   okSucesso: () => voltar(),
@@ -1133,7 +1161,7 @@ function voltar() {
   redesenhar();
   setTimeout(atualizarNumeros, 320);
 }
-const redesenhar = () => pilha.forEach(desenharVista);
+const redesenhar = () => pilha.forEach(v => { v.el.classList.remove('chega'); desenharVista(v); });
 function desenharFolha(c) {
   const f = c.el.querySelector('.folha');
   f.innerHTML = `<div class="alca"><span></span></div>` + c.def.html(c.dados);
