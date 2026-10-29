@@ -148,6 +148,8 @@ button { font-family: inherit; cursor: pointer; padding: 0; -webkit-tap-highligh
 .simular .cliente .eco-rot { font-size: 12px; line-height: 16px; color: var(--pg-texto2); }
 .simular .cliente .seg { width: auto; display: inline-flex; gap: 2px; padding: 3px; border-radius: 18px; }
 .simular .cliente .seg button { min-height: 30px; padding: 5px 12px; border-radius: 15px; font-size: 13px; line-height: 18px; white-space: nowrap; }
+/* the stage on short screens (feedback, 29/10): never cut at the top; when the phone and what is under it do not fit, the stage scrolls, and the side columns stay in view while it does */
+@media (min-width: 981px) { .palco { overflow-x: hidden; overflow-y: auto; align-content: safe center; } .lateral { position: sticky; top: 0; } }
 /* payment options (Figma Tel06): the chosen row pale green with its border, its bubble filled; the others neutral */
 .tela button[data-metodo] { position: relative; isolation: isolate; }
 .tela button[data-metodo][aria-checked="true"]::before { content: ''; position: absolute; z-index: -1; inset: 0 -16px; background: #EBF3ED; border: 1px solid #B4CFBE; }
@@ -317,7 +319,7 @@ const TXT = {
 const IDS = ['set', 'out'];
 // the cashback from May to August still to use, and the iGreen balance
 const BASE_CB = 101.88, CARTEIRA = 300, ECO_ANTES = 132.88, KWH_ANTES = 858;
-const FORMA_TXT = { pix: 'Pix', saldo: 'Saldo iGreen', boleto: 'Boleto' };
+const FORMA_TXT = { pix: 'Pix', saldo: 'Saldo iGreen', boleto: 'Boleto', cartao: 'Cartão Visa •••• 1290' };
 const diaDe = c => (c.forma === 'boleto' ? '08/10' : '06/10');
 const contasDe = est => Object.fromEntries(IDS.map(id => [id, { fase: 'antes', cb: 0, ...(est.contas && est.contas[id]) }]));
 const ganhoDe = (id, cb = 0) => Math.round((DEF[id].valor - cb) * DEF[id].pct) / 100;
@@ -943,6 +945,8 @@ const qrMenor = h => h.replace('<svg width="160" height="160" viewBox="0 0 160 1
 // the paid bills (Sergio, 29/10): the year's cashback without the house illustration, and the rows without the arrows
 const pagasSemCasa = h => h.replace(/<img [^>]*>/, '');
 const pagasSemSeta = h => h.replace(/<span style="flex-shrink: 0; display: flex; color: #6A6E71"><svg [^>]*><path d="m9 18 6-6-6-6"><\/path><\/svg><\/span>/g, '');
+// paid by card (feedback, 29/10): the Pix confirmation's words say the card
+const noCartao = (h, x) => (x.forma === 'cartao' ? h.split('via Pix').join('no cartão') : h);
 
 // ---------- paying: the app's boards with each bill's values and words
 function pagamento(nome, est, id) {
@@ -957,7 +961,7 @@ function pagamento(nome, est, id) {
     case 'F:BoletoPagar': return troca(soFolha(K.cbNoBoleto(A('PgBoletoPagar'), x.pagueAte.slice(0, 5), x.g)), `Quando o banco confirmar o pagamento de ${dinheiro(x.v)}, a fatura é quitada aqui.`, `Quando o banco confirmar o pagamento de ${dinheiro(x.v)}, a fatura é quitada e o cashback de ${dinheiro(x.g)} cai na sua conta.`);
     case 'Aguardando': return trocas(A('PgBoletoAguardando'), [['Avisamos quando a fatura for quitada.', 'Avisamos quando a fatura for quitada e o cashback cair.'], ['>Fatura quitada<', '>Fatura quitada e cashback na conta<']]);
     case 'F:Senha': return soFolha(A('PgSaldoSenha'));
-    case 'Confirmado': return statusPay(bandaEco(A({ saldo: 'PgConfirmadoSaldo', boleto: 'PgConfirmadoBoleto' }[x.forma] || 'PgConfirmado'), id));
+    case 'Confirmado': return statusPay(bandaEco(noCartao(A({ saldo: 'PgConfirmadoSaldo', boleto: 'PgConfirmadoBoleto' }[x.forma] || 'PgConfirmado'), x), id));
     case 'Comprovante': return tela(fgComprovanteDe(est, id));
     case 'FaturaDetalhe': if (id === 'out' && est.emissao && c.fase === 'antes') return K.emissao();
       return tela(fgFatura(est, id));
@@ -4914,7 +4918,8 @@ CONT_PRONTO.then(({ CONT, M }) => {
     }
     let pe = 0;
     for (const el of m.fixos.children) { if (el.classList.contains('folha')) continue; const r = el.getBoundingClientRect(); pe = Math.max(pe, r.height + (m.camada.getBoundingClientRect().bottom - r.bottom)); }
-    m.raiz.style.height = Math.max(m.camada.clientHeight || 844, Math.ceil(fim + (pe ? pe - 4 : 24))) + 'px';
+    const k = (m.camada.offsetHeight && m.camada.getBoundingClientRect().height / m.camada.offsetHeight) || 1;
+    m.raiz.style.height = Math.max(m.camada.clientHeight || 844, Math.ceil(fim / k + (pe ? pe / k - 4 : 24))) + 'px';
   }
   function ir(id, anim = 'push', { manter = false } = {}) {
     const rolagem = manter && atual ? atual.rol.scrollTop : 0;
@@ -5270,7 +5275,7 @@ CONT_PRONTO.then(({ CONT, M }) => {
       if (k === 'pix') ir('Pix:' + id);
       else if (k === 'boleto') ir('Boleto:' + id);
       else if (k === 'saldo') folha((aPagar(id) > N().carteira ? 'SaldoInsuficiente:' : 'Senha:') + id);
-      else toast('O pagamento no cartão fica fora deste protótipo. Siga com Pix ou boleto.');
+      else pagou(id, 'cartao');
     };
     em(c, 'Pagar R$', seguir, { comeca: true });
     c.querySelectorAll('[data-forma]').forEach(b => { b._acao = () => {
@@ -5511,8 +5516,8 @@ CONT_PRONTO.then(({ CONT, M }) => {
   const ACORDO = { ids: ['set', 'out'], entrada: null, dEnt: 2, n: 4, d1: 30, criado: '06/10/2026', fase: 'entrada', pagas: 0 };
   const GRUPO = { ids: ['set', 'out'], venc: 5, criado: '06/10/2026' };
   const FLUXOS = [
-    { grupo: 'Pagar a fatura', id: 'pix-energia', eco: 'normal', titulo: 'Pix da energia', desc: 'Economia normal: a fatura vem com o valor cheio e, pagando, o cliente recebe o desconto de volta no Pix da energia. Embaixo do celular, simule o desconto até o vencimento. A senha do saldo aceita quaisquer 4 números.', passos: [['Faturas · setembro vencida', 'Faturas:casa'], ['Fatura de setembro', 'FaturaDetalhe:set', pg('set', 'pix')], ['Pix: copia e cola e QR', 'Pix:set'], ['Pix: pagamento confirmado', 'Confirmado:set', pago('set', 'pix')], ['Saldo iGreen: senha', 'FaturaDetalhe:set+F:Senha:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'saldo' } }], ['Saldo: pagamento confirmado', 'Confirmado:set', pago('set', 'saldo')], ['Boleto da fatura', 'Boleto:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'boleto' } }]] },
-    { id: 'desconto', eco: 'desc', titulo: 'Desconto', desc: 'Economia com desconto: a fatura já vem com o desconto, e o valor cheio aparece riscado. Embaixo do celular, simule o desconto até o vencimento. A senha do saldo aceita quaisquer 4 números.', passos: [['Faturas · setembro vencida e outubro em aberto', 'Faturas:casa'], ['Fatura de setembro', 'FaturaDetalhe:set', pg('set', 'pix')], ['Fatura de outubro', 'FaturaDetalhe:out', pg('out', 'pix')], ['Pix: copia e cola e QR', 'Pix:set', pg('set', 'pix')], ['Pix: pagamento confirmado', 'Confirmado:set', pago('set', 'pix')], ['Saldo iGreen: senha', 'FaturaDetalhe:set+F:Senha:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'saldo' } }], ['Saldo: pagamento confirmado', 'Confirmado:set', pago('set', 'saldo')], ['Boleto da fatura', 'Boleto:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'boleto' } }]] },
+    { grupo: 'Pagar a fatura', id: 'pix-energia', eco: 'normal', titulo: 'Pix da energia', desc: 'Economia normal: a fatura vem com o valor cheio e, pagando, o cliente recebe o desconto de volta no Pix da energia. Embaixo do celular, simule o desconto até o vencimento. A senha do saldo aceita quaisquer 4 números, e o cartão também paga.', passos: [['Faturas · setembro vencida', 'Faturas:casa'], ['Fatura de setembro', 'FaturaDetalhe:set', pg('set', 'pix')], ['Pix: copia e cola e QR', 'Pix:set'], ['Pix: pagamento confirmado', 'Confirmado:set', pago('set', 'pix')], ['Saldo iGreen: senha', 'FaturaDetalhe:set+F:Senha:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'saldo' } }], ['Saldo: pagamento confirmado', 'Confirmado:set', pago('set', 'saldo')], ['Cartão de crédito escolhido', 'FaturaDetalhe:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'visa' } }], ['Cartão: pagamento confirmado', 'Confirmado:set', pago('set', 'cartao')], ['Boleto da fatura', 'Boleto:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'boleto' } }]] },
+    { id: 'desconto', eco: 'desc', titulo: 'Desconto', desc: 'Economia com desconto: a fatura já vem com o desconto, e o valor cheio aparece riscado. Embaixo do celular, simule o desconto até o vencimento. A senha do saldo aceita quaisquer 4 números, e o cartão também paga.', passos: [['Faturas · setembro vencida e outubro em aberto', 'Faturas:casa'], ['Fatura de setembro', 'FaturaDetalhe:set', pg('set', 'pix')], ['Fatura de outubro', 'FaturaDetalhe:out', pg('out', 'pix')], ['Pix: copia e cola e QR', 'Pix:set', pg('set', 'pix')], ['Pix: pagamento confirmado', 'Confirmado:set', pago('set', 'pix')], ['Saldo iGreen: senha', 'FaturaDetalhe:set+F:Senha:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'saldo' } }], ['Saldo: pagamento confirmado', 'Confirmado:set', pago('set', 'saldo')], ['Cartão de crédito escolhido', 'FaturaDetalhe:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'visa' } }], ['Cartão: pagamento confirmado', 'Confirmado:set', pago('set', 'cartao')], ['Boleto da fatura', 'Boleto:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'boleto' } }]] },
     { grupo: 'Negociar faturas', id: 'parcelar', titulo: 'Parcelar faturas', desc: 'As faturas em aberto da Casa viram uma entrada (mínimo de 20%) e o resto em até 12x. Escolha, simule, confira e confirme: as originais saem do débito e ganham a tag Parcelada. Use Simular, embaixo do celular, para a entrada compensar e as parcelas serem pagas.', passos: [['Faturas', 'Faturas:casa'], ['Escolher as faturas', 'Selecionar:parcelar', { neg: { ...NEG_P, ids: [] } }], ['Setembro e outubro marcadas', 'Selecionar:parcelar', { neg: { ...NEG_P } }], ['Simulação: entrada e parcelas', 'Simulacao', { neg: { ...NEG_P } }], ['Resumo do acordo', 'ResumoAcordo'], ['Acordo criado: pagar a entrada', 'AcordoCriado', { acordo: { ...ACORDO }, neg: null }], ['Faturas: entrada pendente', 'Faturas:casa'], ['Pagar a entrada', 'Faturas:casa+F:PagarAcordo:entrada'], ['Faturas: parcela 1 de 4', 'Faturas:casa', { acordo: { ...ACORDO, fase: 'ativo' } }], ['Todas as parcelas', 'Faturas:casa+F:Parcelas'], ['Fatura parcelada', 'Faturas:casa+F:FaturaNegociada:set']] },
     { id: 'parcelar-regras', titulo: 'Parcelar: travas e avisos', desc: 'O aviso do boleto único, a entrada abaixo do mínimo, as parcelas abaixo de R$ 5,00 travadas e, com um acordo já ativo, as parcelas dele fora de um novo parcelamento.', passos: [['Boleto único na simulação', 'Simulacao', { unica: true, neg: { ...NEG_P } }], ['Entrada abaixo do mínimo', 'Simulacao', { unica: false, neg: { ...NEG_P, entrada: 50 } }], ['Entrada alta: parcelas travadas', 'Simulacao', { neg: { ...NEG_P, entrada: 420 } }], ['Acordo de setembro, outubro em aberto', 'Faturas:casa', { neg: null, acordo: { ...ACORDO, ids: ['set'], entrada: 45.10, n: 3, fase: 'ativo' } }], ['Parcelar de novo: parcelas travadas', 'Selecionar:parcelar', { neg: { ...NEG_P, ids: [] } }]] },
     { id: 'agrupar', titulo: 'Agrupar num boleto único', desc: 'Duas ou mais faturas em aberto num boleto só, com o vencimento escolhido em até 20 dias e a multa e os juros de hoje mantidos. As originais saem do débito, ganham a tag Agrupada e o boleto mostra quais faturas tem dentro.', passos: [['Faturas', 'Faturas:casa'], ['Escolher as faturas', 'Selecionar:agrupar', { neg: { tipo: 'agrupar', ids: [], venc: 5 } }], ['Duas marcadas', 'Selecionar:agrupar', { neg: { tipo: 'agrupar', ids: ['set', 'out'], venc: 5 } }], ['Novo vencimento e confirmação', 'ConfirmarGrupo'], ['Boleto único gerado', 'BoletoGrupo', { grupo: { ...GRUPO }, neg: null }], ['Faturas: boleto agrupado', 'Faturas:casa'], ['O que tem no boleto', 'Faturas:casa+F:Grupo'], ['Pagar o boleto', 'Faturas:casa+F:PagarGrupo'], ['Fatura agrupada', 'Faturas:casa+F:FaturaNegociada:out']] },
@@ -5715,7 +5720,7 @@ CONT_PRONTO.then(({ CONT, M }) => {
     document.body.classList.toggle('real', real.matches);
     const largo = innerWidth > 980;
     const pelaLargura = (innerWidth - (largo ? 32 + 600 + 2 * Math.min(64, Math.max(28, innerWidth * 0.04)) : 32)) / 414;
-    escala = Math.max(0.45, Math.min(1, pelaLargura, largo ? (innerHeight - 32 - 12 - 150) / 868 : 1));
+    escala = Math.max(0.45, Math.min(1, pelaLargura, largo ? (innerHeight - 32 - 12 - 100) / 868 : 1));
     document.documentElement.style.setProperty('--s', escala.toFixed(3));
   };
   addEventListener('resize', ajustar); ajustar();

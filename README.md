@@ -24,7 +24,7 @@ A ajuda que mostra que o cashback vira dinheiro: um balão no botão Resgatar, q
 
 ## Pagar e negociar faturas · Pix da energia, desconto, parcelar, agrupar e desmembrar
 
-As faturas em aberto da Casa no padrão do app. Pagar no modelo da referência de 29/10: no Pix da energia, a fatura vem com o valor cheio e o desconto volta por Pix; com desconto, a fatura já vem com ele e o valor cheio riscado. A fatura mostra o total, o que tem nela com o aviso de atraso dentro, e as formas de pagar (Pix, saldo iGreen com senha, boleto e cartão). A confirmação e o recibo mostram o valor pago, sem cashback e sem ilustração 3D, e o boleto tem só "Copiar código de barras". Continuam o parcelar (entrada e até 12x), o agrupar num boleto único e o desmembrar.
+As faturas em aberto da Casa no padrão do app. Pagar no modelo da referência de 29/10: no Pix da energia, a fatura vem com o valor cheio e o desconto volta por Pix; com desconto, a fatura já vem com ele e o valor cheio riscado. A fatura mostra o total, o que tem nela com o aviso de atraso dentro, e as formas de pagar (Pix, saldo iGreen com senha, boleto e cartão), todas pagando até a confirmação. A confirmação e o recibo mostram o valor pago, sem cashback e sem ilustração 3D, e o boleto tem só "Copiar código de barras". Continuam o parcelar (entrada e até 12x), o agrupar num boleto único e o desmembrar.
 
 Abrir: https://snksergio.github.io/pagar-fatura-igreen/faturas-negociar.html
 
