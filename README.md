@@ -30,3 +30,12 @@ Abrir: https://snksergio.github.io/pagar-fatura-igreen/faturas-negociar.html
 
 - Embaixo do celular, escolha o cliente: economia com desconto ou normal, com ou sem desconto adicional.
 - Links diretos: `#parcelar`, `#parcelar-regras`, `#agrupar`, `#desmembrar`, `#desmembrar-pago`.
+
+## Faturas de energia · v2 com cashback
+
+A versão de design próprio, mais moderna, das faturas de energia: ver as faturas da Casa, pagar a vencida no Pix e a aberta no boleto, boleto em emissão, "já paguei", consulta fora do ar, Pix expirado e saldo insuficiente, troca de unidade e cashback com saldo iGreen. Tem a tipografia, os espaços, as folhas e a animação dos selos de status do cashback v2, e mantém o laranja original.
+
+Abrir: https://snksergio.github.io/pagar-fatura-igreen/faturas-energia-v2.html
+
+- Na tela de pagar, embaixo do celular, escolha a versão do pagamento: Atual modificada, Proposta (sem pagar com o cashback) ou Com cashback.
+- Links diretos: `#ver`, `#vencida-pix`, `#aberta-boleto`, `#emissao`, `#ja-paguei`, `#cashback-saldo`.
