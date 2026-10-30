@@ -29,7 +29,8 @@ As faturas em aberto da Casa no padrão do app. Pagar no modelo da referência d
 Abrir: https://snksergio.github.io/pagar-fatura-igreen/faturas-negociar.html
 
 - Embaixo do celular, escolha o cliente: economia com desconto ou com o Pix da energia, e o desconto até o vencimento: 10% (sem desconto adicional), 16% ou 20%.
-- Links diretos: `#pix-energia`, `#desconto`, `#parcelar`, `#parcelar-regras`, `#agrupar`, `#desmembrar`, `#desmembrar-pago`.
+- Variações da fatura, para escolher como mostrar o Pix da energia logo abaixo do total: na tela da fatura, embaixo do celular, troque entre Atual, A, B, B2, C e D (`#var-pix`, `#var-desc`). Lado a lado: https://snksergio.github.io/pagar-fatura-igreen/faturas-variacoes.html
+- Links diretos: `#pix-energia`, `#desconto`, `#var-pix`, `#var-desc`, `#parcelar`, `#parcelar-regras`, `#agrupar`, `#desmembrar`, `#desmembrar-pago`.
 
 ## Faturas de energia · v2 com cashback
 

@@ -240,7 +240,7 @@ body.real #irFluxos { display: inline-flex; }
 <body>
 <main class="palco">
 <button id="irFluxos" type="button" aria-label="Ver a lista de fluxos"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"></path></svg><span>Fluxos</span></button>
-<nav class="lateral esq" aria-label="Fluxos do protótipo"><div class="marca"><h1>Pagar e negociar faturas · padrão do app</h1><p>No visual do app em produção (Figma APP V1). As faturas em aberto da Casa: pagar com o Pix da energia ou com desconto, parcelar, agrupar num boleto único e desmembrar o boleto agrupado. Embaixo do celular, escolha o cliente: economia com desconto ou com o Pix da energia, e o desconto até o vencimento (10% é sem desconto adicional). Valores fictícios.</p></div><div id="fluxos"></div></nav>
+<nav class="lateral esq" aria-label="Fluxos do protótipo"><div class="marca"><h1>Pagar e negociar faturas · padrão do app</h1><p>No visual do app em produção (Figma APP V1). As faturas em aberto da Casa: pagar com o Pix da energia ou com desconto, parcelar, agrupar num boleto único e desmembrar o boleto agrupado. Embaixo do celular, escolha o cliente: economia com desconto ou com o Pix da energia, e o desconto até o vencimento (10% é sem desconto adicional). Em "Variações da fatura", compare jeitos de mostrar o Pix da energia na fatura: Atual, A, B, B2, C e D. Valores fictícios.</p></div><div id="fluxos"></div></nav>
 <div class="centro">
 <div class="moldura" id="moldura">
 <div class="celular">
@@ -269,7 +269,7 @@ const __F = {"PgComprovanteV3.dc.html":"\u003csvg width=\"100%\" height=\"34\" v
 const __M = {}, __C = {};
 // the customer (Calebe's review, 28/10): 'desc' (desconto na conta) or 'pix' (Pix da energia), and the additional
 // discount for paying on time; the controls under the phone change it
-const __ECO = { modo: 'desc', adic: true, taxa: 16 };
+const __ECO = { modo: 'desc', adic: true, taxa: 16, var: 'atual' };
 const process = { argv: [], env: {} };
 const __nome = p => String(p).split(/[\\/]/).pop();
 const __fs = {
@@ -463,8 +463,11 @@ function aplicarEco() {
   }
 }
 aplicarEco();
-// what paying late costs: the discount (or the Pix) falls to 10% after the due date, counted on the full bill as the reference does
-const maisCaraDe = id => Math.round((ECO_BASE[id].conta + ECO_BASE[id].enc) * (taxaEco() - 10)) / 100;
+// the discount (or the Pix) at a rate, on the bill without the charges: 10% = R$ 25,05 and 16% = R$ 40,08 in September, so
+// the due date's words add up with the bill's own benefit (30/10)
+const descEm = (id, pct) => Math.round(ECO_BASE[id].conta * pct) / 100;
+// a notice set inside a card, as the bill's variation A (Sergio, 30/10): bordered, a small icon, the title and a line
+const avisoDentro = ({ tom, titulo, texto, icone }) => { const t = FG_TOM[tom]; return `<div role="note" style="border-radius: 12px; background: ${t.bg}; border: 1px solid ${t.borda}; padding: 12px 14px; display: flex; align-items: flex-start; gap: 10px"><span style="width: 28px; height: 28px; flex-shrink: 0; border-radius: 14px; background: ${t.cor}; color: #FFFFFF; display: flex; align-items: center; justify-content: center">${svg(icone, 16, 2.2)}</span><span style="min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0D0F0F; text-wrap: pretty">${titulo}</span><span style="font: 500 12px/18px 'Montserrat', system-ui, sans-serif; color: #3D4246; text-wrap: pretty">${texto}</span></span></div>`; };
 const MES_ID = { set: 'Setembro', out: 'Outubro' };
 const PRAZO_GRUPO = 20; // the grouped boleto is due in up to 20 days
 const LINHA_DIG = '34191.79001 01043.510047 91020.150008 1 96520000044416';
@@ -1006,7 +1009,7 @@ function tela0(nome, est, arg) {
 const PRONTAS = new Map();
 function telaDe(nome, est, arg) {
   aplicarEco();
-  const k = `${__ECO.modo}|${__ECO.adic}|${__ECO.taxa}|${nome}@${arg || ''}|${chave(est)}|${JSON.stringify(est.pg || {})}|${est.semCb ? 'sem' : 'cb'}${est.mod ? '|mod' : ''}|${est.eco || 'desc'}${est.semAdic ? '|sa' : ''}`;
+  const k = `${__ECO.var}|${__ECO.modo}|${__ECO.adic}|${__ECO.taxa}|${nome}@${arg || ''}|${chave(est)}|${JSON.stringify(est.pg || {})}|${est.semCb ? 'sem' : 'cb'}${est.mod ? '|mod' : ''}|${est.eco || 'desc'}${est.semAdic ? '|sa' : ''}`;
   let h = PRONTAS.get(k);
   if (h === undefined) { h = tela0(nome, est, arg); PRONTAS.set(k, h); if (PRONTAS.size > 120) PRONTAS.delete(PRONTAS.keys().next().value); }
   return h;
@@ -1047,6 +1050,117 @@ const fgSecao = t => AJ.T.rotulo(t, 24);
 // the receipt's way out, beside "Compartilhar": white like the app's card buttons, the label in the action green
 const FG_INICIO = '<button style="width: 100%; height: 52px; border-radius: 26px; border: 1px solid #EFF1F2; box-shadow: 0 1px 2px rgba(0,66,110,0.10); background: #FFFFFF; color: #338449; font-size: 16px; line-height: 20px; font-weight: 600; display: flex; align-items: center; justify-content: center">Início</button>';
 
+// ---------- variations of the bill's head (Calebe via Sergio, 30/10): the orange "pagando com atraso" card read as confusing,
+// and the Pix da energia should sit right under the total, highlighted. Several ways, chosen under the phone (A, B, B2, C, D);
+// "Atual" is the published one. The rows no longer carry the Pix da energia (it is not part of the sum); with the discount
+// on the bill, the discount stays in the rows, where it is part of the sum, and is highlighted too
+function infoVar(id) {
+  const d = DEF[id], pix = pixEnergia(), tx = taxaEco();
+  return {
+    d, pix, set: id === 'set', adic: __ECO.adic, tx, cheio: descEm(id, tx), dez: descEm(id, 10),
+    nome: pix ? 'Pix da energia' : 'Desconto iGreen', acao: pix ? 'Você recebe de volta' : 'Você economiza',
+    v: d.desc, sinal: pix ? '+' : '', ic: t => (pix ? PIX_LOGO(t) : svg(TAG3, t, 2)),
+  };
+}
+const chipVar = set => (set ? chip3('Venceu em 11/09', TOM3.laranja) : chip3('Vence em 11/10', TOM3.neutro));
+const linhaVenc = set => (set ? `Boleto atualizado · vale até ${forte3('09/10/2026')}` : `Vence em ${forte3('11/10/2026')} · em 5 dias`);
+const riscadoVar = (d, mt, t = 14) => (pixEnergia() ? '' : `<span style="display: block; margin-top: ${mt}px; font-size: ${t}px; line-height: 18px; font-weight: 500; color: #6A6E71; text-decoration: line-through; font-variant-numeric: tabular-nums">${SO_LEITOR('Sem a iGreen: ')}${brl(r2(d.valor + d.desc))}</span>`);
+const discoVar = (inner, s = 36) => `<span style="width: ${s}px; height: ${s}px; flex-shrink: 0; border-radius: ${s / 2}px; background: #338449; color: #FFFFFF; display: flex; align-items: center; justify-content: center">${inner}</span>`;
+// the benefit's value, one size in every variation (Sergio, 30/10: 20 to 24 px read too big)
+const valorVerde = (t, px = 16) => `<span style="flex-shrink: 0; font-size: ${px}px; line-height: ${px + 4}px; font-weight: 600; color: #338449; font-variant-numeric: tabular-nums; white-space: nowrap">${t}</span>`;
+// the card with what to pay, as published; extra goes inside, under the due line
+const totalVar = (id, extra = '') => { const d = DEF[id], set = id === 'set'; return `<div style="margin: 16px 16px 0">${AJ.cartao(`<div style="padding: 16px 20px 18px">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px"><span style="font-size: 12px; line-height: 18px; color: #6A6E71">Total para pagar</span>${chipVar(set)}</div>
+${riscadoVar(d, 4)}
+<span style="display: block; margin-top: ${pixEnergia() ? 4 : 0}px; font-size: 32px; line-height: 38px; font-weight: 600; letter-spacing: -0.5px; font-variant-numeric: proportional-nums; white-space: nowrap">${dinheiro(d.valor)}</span>
+<span style="display: block; margin-top: 2px; font-size: 12px; line-height: 18px; color: #6A6E71">${linhaVenc(set)}</span>${extra}
+</div>`)}</div>`; };
+// what the bill has: the rows of the sum, the Pix da energia out of them; antes opens the card, extra closes it
+const listaVar = (id, extra = '', antes = '') => {
+  const d = DEF[id], set = id === 'set', pix = pixEnergia();
+  const linhas = [['Energia consumida', `${d.kwh} kWh`], ...(pix ? [] : [['Quanto pagaria sem iGreen', brl(d.conta)], [`Desconto ${d.pct}%`, '−' + brl(d.desc), { cor: K.VERDE_TXT }]]), ...(set ? [['Multa e juros', '+' + brl(r2(d.multa + d.juros)), { cor: '#F46D00' }]] : []), ['Total', brl(d.valor), { forte: true }]];
+  return `<div style="margin: 0 16px">${AJ.cartao(`${antes ? `<div style="padding: 16px 16px 4px">${antes}</div>` : ''}<div style="padding: 4px 20px ${extra ? 8 : 4}px">${linhas.map(([k, v, o = {}], i) => AJ.kv(k, v, { ...o, primeiro: !i })).join('')}</div>${extra}`, '; overflow: hidden')}</div>`;
+};
+// the words about the due date, short (a line) or as a title and a text
+const prazoCurto = i => (!i.adic ? '' : i.set ? `Venceu em 11/09, então ficou em 10%. No prazo, seriam ${i.tx}% (${brl(i.cheio)}).` : `Pague até 11/10 para ${i.pix ? 'receber' : 'garantir'} ${i.tx}%. Depois, cai para 10% (${brl(i.dez)}).`);
+const avisoPrazo = i => (!i.adic ? null : i.set
+  ? { tom: 'cinza', titulo: `Por que ${i.pix ? 'o Pix da energia' : 'o desconto'} está em 10%?`, texto: `A fatura venceu em 11/09. Pagando no prazo, seriam ${i.tx}% (${brl(i.cheio)}).`, icone: FG_INFO }
+  : { tom: 'verde', titulo: `Pague até 11/10 e ${i.pix ? 'receba' : 'garanta'} ${i.tx}%`, texto: `Depois do vencimento, ${i.pix ? 'o Pix da energia' : 'o desconto'} cai para 10% (${brl(i.dez)}).`, icone: FG_CAL });
+// a notice in a card of its own (B), at the sizes of the screen's other notices: the 14 px title and the 12 px line
+const avisoFora = ({ tom, titulo, texto, icone }) => { const t = FG_TOM[tom]; return `<div role="note" style="margin: 12px 16px 0; border-radius: 14px; background: ${t.bg}; border: 1px solid ${t.borda}; box-shadow: 0 1px 2px rgba(0,66,110,0.10); padding: 14px 16px; display: flex; align-items: flex-start; gap: 12px"><span style="width: 32px; height: 32px; flex-shrink: 0; border-radius: 16px; background: ${t.cor}; color: #FFFFFF; display: flex; align-items: center; justify-content: center">${svg(icone, 18, 2.2)}</span><span style="min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0D0F0F; text-wrap: pretty">${titulo}</span><span style="font: 500 12px/18px 'Montserrat', system-ui, sans-serif; color: #3D4246; text-wrap: pretty">${texto}</span></span></div>`; };
+// the green strip of the total: the benefit, what it means and its value
+const faixaVar = i => `<div style="margin-top: 14px; border-radius: 12px; background: #EBF3ED; padding: 12px 14px; display: flex; align-items: center; gap: 12px">${discoVar(i.ic(16), 32)}<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0D0F0F">${i.nome}</span><span style="font-size: 12px; line-height: 16px; font-weight: 500; color: #338449">${i.pix ? 'Você recebe ao pagar' : 'Já descontado do valor'}</span></span>${valorVerde(i.sinal + brl(i.v))}</div>`;
+
+// A (Sergio, 30/10: the full-bleed green foot melted into the page): under the Total of the rows, a small card of its own,
+// bordered and with room around it, with what comes back and the due date's word under a hairline
+function variacaoA(id, secao) {
+  const i = infoVar(id), nota = prazoCurto(i);
+  const pe = `<div style="margin: 8px 20px 20px; border-radius: 12px; background: #EBF3ED; border: 1px solid #D5E6DA; padding: 14px">
+<div style="display: flex; align-items: center; gap: 12px">${discoVar(i.ic(18))}<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; line-height: 16px; font-weight: 600; color: #338449">${i.acao}</span><span style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0D0F0F">${i.nome}</span></span>${valorVerde(i.sinal + brl(i.v))}</div>
+${nota ? `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #D5E6DA; display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 18px; font-weight: 500; color: #338449"><span style="flex-shrink: 0; display: flex; margin-top: 1px">${svg(i.set ? P.relogio : FG_CAL, 16, 2)}</span><span style="min-width: 0; text-wrap: pretty">${nota}</span></div>` : ''}
+</div>`;
+  return `${totalVar(id)}\n${secao('O que tem nesta fatura', 20)}\n${listaVar(id, pe)}`;
+}
+
+// B: right under the value, inside the total's card, a green strip; the due date in its own card, as the cashback screens'
+// notices: neutral on the overdue bill (why 10%), green on the open one (what is still in reach)
+function variacaoB(id, secao) {
+  const i = infoVar(id), a = avisoPrazo(i);
+  return `${totalVar(id, faixaVar(i))}\n${a ? avisoFora(a) : ''}\n${secao('O que tem nesta fatura', 24)}\n${listaVar(id)}`;
+}
+
+// B2 (Sergio, 30/10): B with the notice inside "O que tem nesta fatura", first, before the rows; on the overdue bill the
+// notice is an alert (the higher rate is lost), so orange with the alert icon; on the open one, green
+function variacaoB2(id, secao) {
+  const i = infoVar(id), a0 = avisoPrazo(i), a = a0 && i.set ? { ...a0, tom: 'laranja', icone: P.alerta } : a0;
+  return `${totalVar(id, faixaVar(i))}\n${secao('O que tem nesta fatura', 24)}\n${listaVar(id, '', a ? avisoDentro(a) : '')}`;
+}
+
+// C: a card of its own for the Pix da energia, with the rule as a short timeline: until the due date and after it, the
+// step the bill is in highlighted. It explains the 10% without an alert
+function variacaoC(id, secao) {
+  const i = infoVar(id);
+  const passo = (on, rot, sub, valor, ultimo) => `<div style="position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 10px 0">
+<span aria-hidden="true" style="position: relative; z-index: 1; width: 10px; height: 10px; margin-top: 4px; flex-shrink: 0; box-sizing: border-box; border-radius: 5px; background: ${on ? '#338449' : '#FFFFFF'}; border: 2px solid ${on ? '#338449' : '#C9CDD0'}"></span>${ultimo ? '' : '<span aria-hidden="true" style="position: absolute; left: 4px; top: 24px; bottom: -14px; width: 2px; background: #E3E6E8"></span>'}
+<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 13px; line-height: 18px; font-weight: ${on ? 600 : 500}; color: ${on ? '#0D0F0F' : '#8B9094'}">${rot}</span>${on ? `<span style="font-size: 12px; line-height: 16px; font-weight: 600; color: #338449">${sub}</span>` : ''}</span>
+<span style="flex-shrink: 0; font-size: 13px; line-height: 18px; font-weight: 600; color: ${on ? '#338449' : '#8B9094'}; font-variant-numeric: tabular-nums; white-space: nowrap">${valor}</span></div>`;
+  const regua = !i.adic ? '' : `<div style="margin-top: 14px; border-radius: 12px; background: #F6F7F8; padding: 0 14px">
+${passo(!i.set, i.set ? 'No prazo, até 11/09' : 'No prazo, até 11/10', 'Pague até lá', `${i.tx}% · ${brl(i.cheio)}`, false)}
+${passo(i.set, i.set ? 'Depois do vencimento' : 'Depois de 11/10', 'Esta fatura', `10% · ${brl(i.dez)}`, true)}
+</div>`;
+  const card = `<div style="margin: 12px 16px 0">${AJ.cartao(`<div style="padding: 16px 20px">
+<div style="display: flex; align-items: center; gap: 12px">${discoVar(i.ic(20), 40)}<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; line-height: 16px; font-weight: 600; color: #338449">${i.acao}</span><span style="font-size: 16px; line-height: 20px; font-weight: 600; color: #0D0F0F">${i.nome}</span></span>${valorVerde(i.sinal + brl(i.v))}</div>
+${regua}
+</div>`)}</div>`;
+  return `${totalVar(id)}\n${card}\n${secao('O que tem nesta fatura', 24)}\n${listaVar(id)}`;
+}
+
+// D, remade (Sergio, 30/10: the two tiles side by side did not work): the total as a receipt. What to pay on top; a
+// perforation as the separator; under it what comes back, green, and a percentage chip with the due date's word beside it.
+// The notches are real holes (Sergio: painted circles left the card's edge and shadow across them): two halves, each with
+// its corners cut by a mask, and the shadow drawn by a drop-shadow on both, so it follows the cut
+const MASCARA_BAIXO = 'radial-gradient(circle 10px at 0 100%, #0000 9.5px, #000 10px) left / 51% 100% no-repeat, radial-gradient(circle 10px at 100% 100%, #0000 9.5px, #000 10px) right / 51% 100% no-repeat';
+const MASCARA_CIMA = 'radial-gradient(circle 10px at 0 0, #0000 9.5px, #000 10px) left / 51% 100% no-repeat, radial-gradient(circle 10px at 100% 0, #0000 9.5px, #000 10px) right / 51% 100% no-repeat';
+const meiaTicket = (c, cima, pad) => `<div style="position: relative; background: #FFFFFF; border-radius: ${cima ? '14px 14px 0 0' : '0 0 14px 14px'}; padding: ${pad}; -webkit-mask: ${cima ? MASCARA_BAIXO : MASCARA_CIMA}; mask: ${cima ? MASCARA_BAIXO : MASCARA_CIMA}">${c}</div>`;
+function variacaoD(id, secao) {
+  const i = infoVar(id), d = i.d;
+  const chip = t => `<span style="height: 24px; padding: 0 10px; border-radius: 12px; background: #EBF3ED; color: #338449; display: inline-flex; align-items: center; font-size: 12px; line-height: 16px; font-weight: 600; white-space: nowrap">${t}</span>`;
+  const prazo = !i.adic ? chip(`${d.pct}% nesta fatura`)
+    : i.set ? `${chip('10% nesta fatura')}<span>Venceu em 11/09 · no prazo, ${i.tx}% (${brl(i.cheio)})</span>`
+      : `${chip(`${i.tx}% até 11/10`)}<span>Depois, 10% (${brl(i.dez)})</span>`;
+  const card = `<div style="margin: 16px 16px 0; filter: drop-shadow(0 1px 2px rgba(0,66,110,0.12))">
+${meiaTicket(`<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px"><span style="font-size: 12px; line-height: 18px; color: #6A6E71">Total para pagar</span>${chipVar(i.set)}</div>
+${riscadoVar(d, 4)}
+<span style="display: block; margin-top: ${pixEnergia() ? 4 : 0}px; font-size: 32px; line-height: 38px; font-weight: 600; letter-spacing: -0.5px; font-variant-numeric: proportional-nums; white-space: nowrap">${dinheiro(d.valor)}</span>
+<span style="display: block; margin-top: 2px; font-size: 12px; line-height: 18px; color: #6A6E71">${linhaVenc(i.set)}</span>`, true, '16px 20px 14px')}
+${meiaTicket(`<span aria-hidden="true" style="position: absolute; left: 20px; right: 20px; top: -1px; border-top: 2px dashed #E3E6E8"></span>
+<div style="display: flex; align-items: center; gap: 12px">${discoVar(i.ic(20), 40)}<span style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; line-height: 16px; font-weight: 600; color: #338449">${i.acao}</span><span style="font-size: 16px; line-height: 20px; font-weight: 600; color: #0D0F0F">${i.nome}</span></span>${valorVerde(i.sinal + brl(i.v))}</div>
+<div style="margin-top: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; font-size: 12px; line-height: 18px; font-weight: 500; color: #6A6E71">${prazo}</div>`, false, '16px 20px 18px')}
+</div>`;
+  return `${card}\n${secao('O que tem nesta fatura', 24)}\n${listaVar(id)}`;
+}
+const VARIACOES = { A: variacaoA, B: variacaoB, B2: variacaoB2, C: variacaoC, D: variacaoD };
+
 // the bill to pay: what it is in the alert, the detail in the ticket, then how to pay and the other options
 function fgFatura(est, id) {
   const d = DEF[id], set = id === 'set', pix = pixEnergia(), bn = beneficio(id), n = numeros(est);
@@ -1069,7 +1183,12 @@ ${pix ? '' : `<span style="display: block; margin-top: 4px; font-size: 14px; lin
     ...(set ? [['Multa e juros', '+' + brl(r2(d.multa + d.juros)), { cor: '#F46D00' }]] : []),
     ['Total', brl(d.valor), { forte: true }],
   ];
-  const atraso = __ECO.adic ? nota3('laranja', P.alerta, `Pagando com atraso, esta fatura fica ${forte3(dinheiro(maisCaraDe(id)), '')} mais cara. Depois do vencimento, o ${pix ? 'Pix da energia' : 'desconto'} cai para 10%.`, 8) : '';
+  // the due date's words (Sergio, 30/10: "pagando com atraso… fica mais cara" read as confusing on a bill already late): what
+  // the rate is and why, in the inset card of variation A; orange on the overdue bill, green on the open one
+  const tx = taxaEco(), nomeB = pix ? 'o Pix da energia' : 'o desconto';
+  const atraso = !__ECO.adic ? '' : `<div style="margin-top: 8px">${avisoDentro(set
+    ? { tom: 'laranja', titulo: `${pix ? 'O Pix da energia' : 'O desconto'} ficou em 10%`, texto: `A fatura venceu em 11/09. Pagando no prazo, seriam ${tx}% (${brl(descEm(id, tx))}).`, icone: P.alerta }
+    : { tom: 'verde', titulo: `Pague até 11/10 e ${pix ? 'receba' : 'garanta'} ${tx}%`, texto: `Depois do vencimento, ${nomeB} cai para 10% (${brl(descEm(id, 10))}).`, icone: FG_CAL })}</div>`;
   const oQueTem = `<div style="margin: 0 16px">${AJ.cartao(`<div style="padding: 4px 20px ${atraso ? 20 : 4}px">${linhas.map(([k, v, o = {}], i) => AJ.kv(k, v, { ...o, primeiro: !i })).join('')}${atraso}</div>`)}</div>`;
   // how to pay: pick one in "Como pagar" or "Ou no cartão de crédito" and the button pays it
   const pg = est.pg || {}, metodo = (pg.conta === id && pg.metodo) || 'pix';
@@ -1093,9 +1212,7 @@ ${pix ? '' : `<span style="display: block; margin-top: 4px; font-size: 14px; lin
   const secao = (t, mt) => `<span style="display: block; margin: ${mt}px 16px 12px; font-size: 16px; line-height: 20px; font-weight: 600; color: #0D0F0F">${t}</span>`;
   return `${AJ.cabecalho(`Fatura de ${d.mes}`, 'Energia · Casa')}
 ${topo}
-${total}
-${secao('O que tem nesta fatura', 20)}
-${oQueTem}
+${VARIACOES[__ECO.var] ? VARIACOES[__ECO.var](id, secao) : `${total}\n${secao('O que tem nesta fatura', 20)}\n${oQueTem}`}
 ${secao('Como pagar', 28)}
 ${grupoPg('Como pagar', comoPagar)}
 ${secao('Ou no cartão de crédito', 16)}
@@ -5516,6 +5633,8 @@ CONT_PRONTO.then(({ CONT, M }) => {
   const ACORDO = { ids: ['set', 'out'], entrada: null, dEnt: 2, n: 4, d1: 30, criado: '06/10/2026', fase: 'entrada', pagas: 0 };
   const GRUPO = { ids: ['set', 'out'], venc: 5, criado: '06/10/2026' };
   const FLUXOS = [
+    { grupo: 'Variações da fatura', id: 'var-pix', eco: 'normal', titulo: 'Fatura · Pix da energia', desc: 'Jeitos de mostrar o Pix da energia logo abaixo do total, com destaque, e de explicar o prazo sem o card laranja. Escolha embaixo do celular: Atual, A, B, B2, C ou D.', passos: [['Setembro vencida', 'FaturaDetalhe:set', pg('set', 'pix')], ['Outubro em aberto', 'FaturaDetalhe:out', pg('out', 'pix')]] },
+    { id: 'var-desc', eco: 'desc', titulo: 'Fatura · Desconto', desc: 'As mesmas variações para quem tem a economia com desconto. Escolha embaixo do celular: Atual, A, B, B2, C ou D.', passos: [['Setembro vencida', 'FaturaDetalhe:set', pg('set', 'pix')], ['Outubro em aberto', 'FaturaDetalhe:out', pg('out', 'pix')]] },
     { grupo: 'Pagar a fatura', id: 'pix-energia', eco: 'normal', titulo: 'Pix da energia', desc: 'Economia normal: a fatura vem com o valor cheio e, pagando, o cliente recebe o desconto de volta no Pix da energia. Embaixo do celular, simule o desconto até o vencimento. A senha do saldo aceita quaisquer 4 números, e o cartão também paga.', passos: [['Faturas · setembro vencida', 'Faturas:casa'], ['Fatura de setembro', 'FaturaDetalhe:set', pg('set', 'pix')], ['Pix: copia e cola e QR', 'Pix:set'], ['Pix: pagamento confirmado', 'Confirmado:set', pago('set', 'pix')], ['Saldo iGreen: senha', 'FaturaDetalhe:set+F:Senha:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'saldo' } }], ['Saldo: pagamento confirmado', 'Confirmado:set', pago('set', 'saldo')], ['Cartão de crédito escolhido', 'FaturaDetalhe:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'visa' } }], ['Cartão: pagamento confirmado', 'Confirmado:set', pago('set', 'cartao')], ['Boleto da fatura', 'Boleto:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'boleto' } }]] },
     { id: 'desconto', eco: 'desc', titulo: 'Desconto', desc: 'Economia com desconto: a fatura já vem com o desconto, e o valor cheio aparece riscado. Embaixo do celular, simule o desconto até o vencimento. A senha do saldo aceita quaisquer 4 números, e o cartão também paga.', passos: [['Faturas · setembro vencida e outubro em aberto', 'Faturas:casa'], ['Fatura de setembro', 'FaturaDetalhe:set', pg('set', 'pix')], ['Fatura de outubro', 'FaturaDetalhe:out', pg('out', 'pix')], ['Pix: copia e cola e QR', 'Pix:set', pg('set', 'pix')], ['Pix: pagamento confirmado', 'Confirmado:set', pago('set', 'pix')], ['Saldo iGreen: senha', 'FaturaDetalhe:set+F:Senha:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'saldo' } }], ['Saldo: pagamento confirmado', 'Confirmado:set', pago('set', 'saldo')], ['Cartão de crédito escolhido', 'FaturaDetalhe:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'visa' } }], ['Cartão: pagamento confirmado', 'Confirmado:set', pago('set', 'cartao')], ['Boleto da fatura', 'Boleto:set', { contas: { set: { fase: 'antes', forma: '', cb: 0 } }, pg: { conta: 'set', metodo: 'boleto' } }]] },
     { grupo: 'Negociar faturas', id: 'parcelar', titulo: 'Parcelar faturas', desc: 'As faturas em aberto da Casa viram uma entrada (mínimo de 20%) e o resto em até 12x. Escolha, simule, confira e confirme: as originais saem do débito e ganham a tag Parcelada. Use Simular, embaixo do celular, para a entrada compensar e as parcelas serem pagas.', passos: [['Faturas', 'Faturas:casa'], ['Escolher as faturas', 'Selecionar:parcelar', { neg: { ...NEG_P, ids: [] } }], ['Setembro e outubro marcadas', 'Selecionar:parcelar', { neg: { ...NEG_P } }], ['Simulação: entrada e parcelas', 'Simulacao', { neg: { ...NEG_P } }], ['Resumo do acordo', 'ResumoAcordo'], ['Acordo criado: pagar a entrada', 'AcordoCriado', { acordo: { ...ACORDO }, neg: null }], ['Faturas: entrada pendente', 'Faturas:casa'], ['Pagar a entrada', 'Faturas:casa+F:PagarAcordo:entrada'], ['Faturas: parcela 1 de 4', 'Faturas:casa', { acordo: { ...ACORDO, fase: 'ativo' } }], ['Todas as parcelas', 'Faturas:casa+F:Parcelas'], ['Fatura parcelada', 'Faturas:casa+F:FaturaNegociada:set']] },
@@ -5657,6 +5776,16 @@ CONT_PRONTO.then(({ CONT, M }) => {
     }; });
     return el;
   }
+  // ---------- the bill's head in four ways (Calebe via Sergio, 30/10), only on the bill's screen
+  const VARS = [['atual', 'Atual'], ['A', 'A'], ['B', 'B'], ['B2', 'B2'], ['C', 'C'], ['D', 'D']];
+  const NOME_VAR = { atual: 'Atual: o card laranja dentro da lista', A: 'A: card verde no pé da lista, abaixo do Total', B: 'B: faixa verde no total e um card que explica os 10%', B2: 'B2: faixa no total e o aviso dentro de "O que tem nesta fatura"', C: 'C: card do Pix da energia com a régua do prazo', D: 'D: o total como recibo, o Pix da energia depois do picote' };
+  function controleVar() {
+    const el = document.createElement('div');
+    el.className = 'cliente';
+    el.innerHTML = `<span class="rot">Variação da fatura</span><div class="eco-linha"><div class="eco-grupo"><div class="seg" role="radiogroup" aria-label="Variação da fatura">${VARS.map(([k, t]) => `<button type="button" role="radio" aria-checked="${k === __ECO.var}" data-var="${k}">${t}</button>`).join('')}</div><span class="eco-rot">${NOME_VAR[__ECO.var]}</span></div></div>`;
+    el.querySelectorAll('[data-var]').forEach(b => { b.onclick = () => { if (b.dataset.var === __ECO.var) return; __ECO.var = b.dataset.var; toast(NOME_VAR[__ECO.var]); if (atual) render(atual.id, 'fade', 0); }; });
+    return el;
+  }
   // ---------- simulate buttons under the phone
   const simularEl = $('#simular');
   const ICONE_RECOMECAR = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>';
@@ -5685,6 +5814,7 @@ CONT_PRONTO.then(({ CONT, M }) => {
     const [telaBase, contaBase] = atual ? partes(atual.id.split('+')[0]) : [];
     if (telaBase === 'Pagar' && !(contaBase === 'out' && estado.emissao)) simularEl.prepend(controleVersao());
     simularEl.prepend(controleEco());
+    if (telaBase === 'FaturaDetalhe' || telaBase === 'Pagar') simularEl.prepend(controleVar());
     const [l1, l2] = simularEl.querySelectorAll('.linha');
     extra.forEach(([t, fn], i) => { const b = document.createElement('button'); b.className = i ? '' : 'destaque'; b.innerHTML = (i ? '' : ICONE_TOQUE) + t; b.onclick = fn; l1.appendChild(b); });
     if (faseDe('out') === 'antes') {
